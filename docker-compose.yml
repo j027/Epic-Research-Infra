@@ -1,0 +1,51 @@
+
+services:
+  # Kali Linux Jump Box - Externally accessible
+  kali-jump:
+    build: ./kali-jump
+    container_name: kali-jump-box
+    hostname: kali-jump
+    networks:
+      cyber-lab-network:
+        ipv4_address: 172.20.0.10
+    ports:
+      - "2222:22"  # External SSH access on port 2222
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    security_opt:
+      - seccomp:unconfined
+    mem_limit: 2g
+    cpus: '1.0'
+
+  # Ubuntu Target 1 - Internal only
+  ubuntu-target1:
+    build: ./ubuntu-target1
+    container_name: ubuntu-target1
+    hostname: ubuntu-target1
+    networks:
+      cyber-lab-network:
+        ipv4_address: 172.20.0.11
+    restart: unless-stopped
+    mem_limit: 1g
+    cpus: '0.5'
+
+  # Ubuntu Target 2 - Internal only
+  ubuntu-target2:
+    build: ./ubuntu-target2
+    container_name: ubuntu-target2
+    hostname: ubuntu-target2
+    networks:
+      cyber-lab-network:
+        ipv4_address: 172.20.0.12
+    restart: unless-stopped
+    mem_limit: 1g
+    cpus: '0.5'
+
+networks:
+  cyber-lab-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+          gateway: 172.20.0.1
