@@ -92,13 +92,8 @@ Internet → Port 2222 → Kali Jump Box (172.20.0.10)
 
 Each container has built-in protections against resource exhaustion attacks:
 
-- **Process limits:** Max 100-200 processes per user
-- **File descriptor limits:** Max 1024-2048 open files
 - **Memory limits:** 1-2GB per container
 - **CPU limits:** 0.5-1.0 CPU cores per container
-- **Student users:** Additional restrictions (50-100 processes max)
-
-These limits prevent fork bombs and other resource exhaustion attacks from affecting the host system.
 
 ## Lab Exercises
 
