@@ -8,7 +8,24 @@ This Docker environment provides a realistic cybersecurity lab setup for educati
 ## Architecture Overview
 
 ```
-Internet → Port 2222 → Kali Jump Box (172.20.0.10)
+Network → Port 2222 → Kali Jump Box (172.20.0.10)
                             ↓ Internal Network
                        Ubuntu Target 1 (172.20.0.11)
                        Ubuntu Target 2 (172.20.0.12)
+```
+
+## Usage
+
+> You need to install docker for this to work.
+
+### Build and start up containers
+```
+sudo docker compose up -d --build
+```
+
+### Tear down and destroy containers
+```
+sudo docker compose down
+```
+
+> Credentials for all containers are student:student123
