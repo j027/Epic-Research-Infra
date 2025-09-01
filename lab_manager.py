@@ -14,7 +14,7 @@ import subprocess
 import os
 import json
 import hashlib
-import re
+import time
 from typing import List, Dict, Optional, Set, TypedDict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -31,6 +31,18 @@ class LabManager:
         """Initialize the Lab Manager with the docker-compose file path."""
         self.compose_file = compose_file
         self.use_sudo = use_sudo
+    
+    def _confirm_parallel_execution(self, operation_name: str) -> bool:
+        """Helper function to confirm parallel execution with user."""
+        print(f"\n⚠️  PARALLEL EXECUTION MODE")
+        print(f"   Docker containers will be {operation_name} simultaneously.")
+        print("   Your screen may show interleaved output from multiple operations.")
+        print("   This is normal and expected behavior.")
+        response = input("\n   Continue with parallel execution? (y/N): ").strip().lower()
+        if response not in ['y', 'yes']:
+            print("   Switching to sequential execution...")
+            return False
+        return True
         
     def run_command(self, command: List[str], env: Optional[Dict[str, str]] = None, capture_output: bool = True) -> subprocess.CompletedProcess[str]:
         """Run a shell command with optional environment variables."""
@@ -84,41 +96,24 @@ class LabManager:
             print("❌ Failed to build images")
             return False
     
-    def get_used_subnets(self) -> Set[int]:
-        """Get set of subnet IDs currently in use by lab containers."""
+    def get_used_subnets(self, csv_file: str) -> Set[int]:
+        """Get set of subnet IDs currently in use, using CSV as the only source of truth."""
+        used_subnets = set()
+        
         try:
-            result = self.run_command([
-                "docker", "network", "ls", "--format", "json",
-                "--filter", "name=cyber-lab-"
-            ])
-            
-            used_subnets = set()
-            if result.stdout.strip():
-                for line in result.stdout.strip().split('\n'):
-                    if line:
-                        network = json.loads(line)
-                        name = network.get('Name', '')
-                        if name.startswith('cyber-lab-'):
-                            # Get network details to extract subnet
-                            try:
-                                inspect_result = self.run_command([
-                                    "docker", "network", "inspect", name
-                                ])
-                                network_details = json.loads(inspect_result.stdout)
-                                if network_details and len(network_details) > 0:
-                                    ipam = network_details[0].get('IPAM', {})
-                                    config = ipam.get('Config', [])
-                                    if config and len(config) > 0:
-                                        subnet = config[0].get('Subnet', '')
-                                        # Extract subnet ID from format 172.20.X.0/24
-                                        if subnet.startswith('172.20.') and subnet.endswith('.0/24'):
-                                            subnet_id = int(subnet.split('.')[2])
-                                            used_subnets.add(subnet_id)
-                            except (subprocess.CalledProcessError, ValueError, KeyError, IndexError):
-                                pass
-            
+            with open(csv_file, 'r', newline='') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if 'subnet_id' in row and row['subnet_id']:
+                        subnet_value = str(row['subnet_id']).strip()
+                        if subnet_value and subnet_value.isdigit():
+                            used_subnets.add(int(subnet_value))
             return used_subnets
-        except subprocess.CalledProcessError:
+        except FileNotFoundError:
+            print(f"❌ CSV file {csv_file} not found")
+            return set()
+        except Exception as e:
+            print(f"❌ Error reading CSV file: {e}")
             return set()
     
     def calculate_subnet_id(self, student_id: str, used_subnets: Set[int]) -> int:
@@ -140,12 +135,12 @@ class LabManager:
         
         return subnet_id
     
-    def get_student_env(self, student_id: str, student_name: str, port: int, subnet_id: Optional[int] = None) -> Dict[str, str]:
+    def get_student_env(self, student_id: str, student_name: str, port: int, subnet_id: Optional[int] = None, csv_file: str = "students.csv") -> Dict[str, str]:
         """Generate environment variables for a specific student."""
         # Use provided subnet_id if available, otherwise calculate from student ID
         if subnet_id is None:
-            # Get currently used subnets to avoid collisions
-            used_subnets = self.get_used_subnets()
+            # Get currently used subnets to avoid collisions, using CSV as source of truth
+            used_subnets = self.get_used_subnets(csv_file)
             subnet_id = self.calculate_subnet_id(student_id, used_subnets)
         
         return {
@@ -156,47 +151,100 @@ class LabManager:
             'NETWORK_NAME': f'cyber-lab-{student_id}'
         }
     
-    def get_used_ports(self) -> Set[int]:
-        """Get set of ports currently in use by lab containers."""
+    def get_used_ports(self, csv_file: str) -> Set[int]:
+        """Get set of ports currently in use, using CSV as the only source of truth."""
+        used_ports = set()
+        
         try:
-            result = self.run_command([
-                "docker", "ps", "-a", "--format", "json",
-                "--filter", "name=cyber-lab-"
-            ])
-            
-            used_ports = set()
-            if result.stdout.strip():
-                for line in result.stdout.strip().split('\n'):
-                    if line:
-                        container = json.loads(line)
-                        ports = container.get('Ports', '')
-                        
-                        # Extract port mappings from the Ports field
-                        # Format like: "0.0.0.0:2222->22/tcp, [::]:2222->22/tcp"
-                        if ports:
-                            import re
-                            # Find all port mappings in format "host_port->container_port"
-                            port_matches = re.findall(r'(\d+)->\d+', ports)
-                            for port_str in port_matches:
-                                port = int(port_str)
-                                if port >= 2222:  # Only consider our SSH ports
-                                    used_ports.add(port)
-            
+            with open(csv_file, 'r', newline='') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if 'port' in row and row['port']:
+                        port_value = str(row['port']).strip()
+                        if port_value and port_value.isdigit():
+                            port = int(port_value)
+                            if port >= 2222:  # Only consider our SSH ports
+                                used_ports.add(port)
             return used_ports
-        except (subprocess.CalledProcessError, ValueError):
+        except FileNotFoundError:
+            print(f"❌ CSV file {csv_file} not found")
+            return set()
+        except Exception as e:
+            print(f"❌ Error reading CSV file: {e}")
             return set()
     
-    def auto_assign_port(self, existing_ports: Set[int]) -> int:
-        """Auto-assign a unique port starting from 2222."""
-        used_ports = self.get_used_ports()
-        used_ports.update(existing_ports)
-        
+    def auto_assign_port(self, existing_ports: Set[int], csv_file: str = "students.csv") -> int:
+        """Auto-assign a unique port starting from 2222."""        
         # Start from 2222 and find first available port
         port = 2222
-        while port in used_ports:
+        while port in existing_ports:
             port += 1
         
         return port
+    
+    def ensure_assignments(self, students: List[StudentData], csv_file: str) -> List[StudentData]:
+        """Ensure all students have valid port and subnet assignments. 
+        This is the centralized assignment service that handles all assignment logic.
+        Should never be called in parallel - CSV write is the critical section.
+        """
+        if not students:
+            return students
+        
+        # Read current state from CSV to get baseline
+        used_ports = self.get_used_ports(csv_file)
+        used_subnets = self.get_used_subnets(csv_file)
+        
+        updated_students = []
+        changes_made = False
+        
+        for student in students:
+            updated_student = student.copy()
+            
+            # Ensure valid port assignment
+            if not student.get('port') or student['port'] <= 0 or student['port'] in used_ports:
+                new_port = self.auto_assign_port(used_ports)
+                used_ports.add(new_port)
+                updated_student['port'] = new_port
+                print(f"🔧 Assigned port {new_port} to student {student['student_id']}")
+                changes_made = True
+            else:
+                used_ports.add(student['port'])
+            
+            # Ensure valid subnet assignment
+            if not student.get('subnet_id') or student['subnet_id'] in used_subnets:
+                new_subnet = self.calculate_subnet_id(student['student_id'], used_subnets)
+                used_subnets.add(new_subnet)
+                updated_student['subnet_id'] = new_subnet
+                print(f"🔧 Assigned subnet {new_subnet} to student {student['student_id']}")
+                changes_made = True
+            else:
+                # Type safety: we know subnet_id is not None here due to the condition above
+                subnet_id = student['subnet_id']
+                if subnet_id is not None:
+                    used_subnets.add(subnet_id)
+            
+            updated_students.append(updated_student)
+        
+        # Write back to CSV if we made changes
+        if changes_made:
+            # Read all students from CSV to preserve others not in our list
+            all_students = self.read_students_csv(csv_file, update_if_changed=False)
+            
+            # Update the students we processed
+            student_lookup = {s['student_id']: s for s in updated_students}
+            for i, student in enumerate(all_students):
+                if student['student_id'] in student_lookup:
+                    all_students[i] = student_lookup[student['student_id']]
+            
+            # Add any new students not already in CSV
+            existing_ids = {s['student_id'] for s in all_students}
+            for student in updated_students:
+                if student['student_id'] not in existing_ids:
+                    all_students.append(student)
+            
+            self.write_students_csv(csv_file, all_students)
+        
+        return updated_students
     
     def write_students_csv(self, csv_file: str, students: List[StudentData]) -> bool:
         """Write student data back to CSV file with updated ports and subnet IDs."""
@@ -227,14 +275,11 @@ class LabManager:
                 writer.writeheader()
                 
                 for student in students:
-                    # Calculate subnet ID for this student
-                    subnet_id = self.calculate_subnet_id(student['student_id'], set())
-                    
                     row = {
                         'student_id': student['student_id'],
                         'student_name': student['student_name'],
                         'port': student['port'],
-                        'subnet_id': subnet_id
+                        'subnet_id': student['subnet_id']  # Use existing subnet_id, don't recalculate
                     }
                     
                     # Add any extra columns that might exist
@@ -254,14 +299,12 @@ class LabManager:
     def read_students_csv(self, csv_file: str, update_if_changed: bool = True) -> List[StudentData]:
         """Read student data from CSV file."""
         students: List[StudentData] = []
-        assigned_ports: Set[int] = set()
-        changes_made = False
         
         try:
             with open(csv_file, 'r', newline='') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    # Expected columns: student_id, student_name, port (port is optional)
+                    # Expected columns: student_id, student_name, port (optional), subnet_id (optional)
                     student_id = row['student_id'].strip()
                     student_name = row['student_name'].strip()
                     
@@ -270,37 +313,18 @@ class LabManager:
                     if 'port' in row and row['port'] is not None:
                         port_value = str(row['port']).strip()
                     
+                    port = 0  # Default to 0 to indicate needs assignment
                     if port_value and port_value.isdigit() and int(port_value) > 0:
-                        # Port is provided and valid
                         port = int(port_value)
-                    else:
-                        # No port provided, empty, or invalid port - auto-assign
-                        port = self.auto_assign_port(assigned_ports)
-                        print(f"🔧 Auto-assigned port {port} to student {student_id}")
-                        changes_made = True
-                    
-                    # Check for port conflicts with already assigned ports in this CSV
-                    if port in assigned_ports:
-                        print(f"⚠️  Port conflict detected for {student_id}, auto-assigning new port")
-                        port = self.auto_assign_port(assigned_ports)
-                        print(f"🔧 Auto-assigned port {port} to student {student_id}")
-                        changes_made = True
                     
                     # Handle subnet_id - more robust checking
                     subnet_value = ''
                     if 'subnet_id' in row and row['subnet_id'] is not None:
                         subnet_value = str(row['subnet_id']).strip()
                     
-                    subnet_id = None
+                    subnet_id = None  # Default to None to indicate needs assignment
                     if subnet_value and subnet_value.isdigit() and int(subnet_value) > 0:
                         subnet_id = int(subnet_value)
-                    else:
-                        # No subnet_id provided, empty, or invalid - calculate it and mark for update
-                        used_subnets = self.get_used_subnets()
-                        subnet_id = self.calculate_subnet_id(student_id, used_subnets)
-                        changes_made = True
-                    
-                    assigned_ports.add(port)
                     
                     students.append({
                         'student_id': student_id,
@@ -311,9 +335,9 @@ class LabManager:
                     
             print(f"✅ Loaded {len(students)} students from {csv_file}")
             
-            # Write back to CSV if we made changes and update is requested
-            if changes_made and update_if_changed:
-                self.write_students_csv(csv_file, students)
+            # Use centralized assignment service to ensure all assignments are valid
+            if update_if_changed:
+                students = self.ensure_assignments(students, csv_file)
             
             return students
         except FileNotFoundError:
@@ -323,11 +347,19 @@ class LabManager:
             print(f"❌ Error reading CSV file: {e}")
             return []
     
-    def spin_up_student(self, student_id: str, student_name: str, port: int, subnet_id: Optional[int] = None) -> bool:
+    def get_student_from_csv(self, student_id: str, csv_file: str) -> Optional[StudentData]:
+        """Get a single student's data from CSV by student_id."""
+        students = self.read_students_csv(csv_file)
+        for student in students:
+            if student['student_id'] == student_id:
+                return student
+        return None
+
+    def spin_up_student(self, student_id: str, student_name: str, port: int, subnet_id: Optional[int] = None, csv_file: str = "students.csv") -> bool:
         """Spin up containers for a specific student."""
         print(f"🚀 Spinning up containers for student: {student_name} ({student_id}) on port {port}")
         
-        env = self.get_student_env(student_id, student_name, port, subnet_id)
+        env = self.get_student_env(student_id, student_name, port, subnet_id, csv_file)
         
         try:
             # Use project name to isolate each student's containers
@@ -343,30 +375,29 @@ class LabManager:
             print(f"❌ Failed to start containers for {student_name}")
             return False
     
-    def spin_down_student(self, student_id: str) -> bool:
+    def spin_down_student(self, student_id: str, csv_file: str = "students.csv") -> bool:
         """Spin down containers for a specific student."""
-        print(f"🛑 Spinning down containers for student: {student_id}")
+        # Get student info from CSV
+        student_info = self.get_student_from_csv(student_id, csv_file)
+        if not student_info:
+            print(f"❌ Student {student_id} not found in {csv_file}")
+            return False
+        
+        env = self.get_student_env(student_id, student_info['student_name'], student_info['port'], student_info.get('subnet_id'), csv_file)
+        print(f"🔽 Spinning down containers for student: {student_info['student_name']} ({student_id})")
         
         try:
-            # Get the student's environment to ensure we use the same network name
-            # We need minimal env to make sure compose finds the right network
-            env = {
-                'STUDENT_ID': student_id,
-                'NETWORK_NAME': f'cyber-lab-{student_id}'
-            }
-            
-            # Use project name to target specific student's containers
+            # Use project name to isolate each student's containers
             self.run_command([
-                "docker", "compose",
+                "docker", "compose", 
                 "-f", self.compose_file,
                 "-p", f"cyber-lab-{student_id}",  # Project name for isolation
-                "down", "--remove-orphans"
+                "down", "--volumes", "--remove-orphans"
             ], env=env, capture_output=False)
-            
-            print(f"✅ Containers removed for student {student_id}")
+            print(f"✅ Containers removed for {student_info['student_name']}")
             return True
         except subprocess.CalledProcessError:
-            print(f"❌ Failed to remove containers for student {student_id}")
+            print(f"❌ Failed to remove containers for {student_info['student_name']}")
             return False
     
     def spin_up_class(self, csv_file: str, parallel: bool = True) -> bool:
@@ -376,6 +407,15 @@ class LabManager:
             return False
         
         print(f"🚀 Spinning up containers for {len(students)} students...")
+        
+        # Add confirmation screen for parallel operations
+        if parallel:
+            parallel = self._confirm_parallel_execution("created")
+        
+        # For both parallel and sequential execution, ensure all assignments are complete
+        # before starting container operations to avoid race conditions
+        print("🔧 Ensuring all port and subnet assignments are complete...")
+        students = self.ensure_assignments(students, csv_file)
         
         if parallel:
             # Parallel execution
@@ -388,7 +428,8 @@ class LabManager:
                         student['student_id'], 
                         student['student_name'], 
                         student['port'],
-                        student['subnet_id']
+                        student['subnet_id'],
+                        csv_file
                     ): student for student in students
                 }
                 
@@ -408,7 +449,8 @@ class LabManager:
                     student['student_id'], 
                     student['student_name'], 
                     student['port'],
-                    student['subnet_id']
+                    student['subnet_id'],
+                    csv_file
                 ):
                     success_count += 1
         
@@ -422,6 +464,10 @@ class LabManager:
             return False
         
         print(f"🛑 Spinning down containers for {len(students)} students...")
+        
+        # Add confirmation screen for parallel operations
+        if parallel:
+            parallel = self._confirm_parallel_execution("stopped")
         
         if parallel:
             # Parallel execution
@@ -454,10 +500,9 @@ class LabManager:
     def get_running_students(self) -> Set[str]:
         """Get set of student IDs that currently have running containers."""
         try:
-            # Look for containers with our project naming pattern
+            # Look for containers with our project naming pattern (all containers, not just running)
             result = self.run_command([
-                "docker", "ps", "-a", "--format", "json",
-                "--filter", "name=cyber-lab-"
+                "docker", "ps", "-a", "--format", "json"
             ])
             
             student_ids = set()
@@ -468,17 +513,16 @@ class LabManager:
                         names = container.get('Names', '')
                         
                         # Extract student ID from container names
-                        # Names like: cyber-lab-student001-kali-jump-1
+                        # Names like: cyber-lab-student001-kali-jump-1 or kali-jump-student001
                         if names:
                             for name in names.split(','):
-                                if 'cyber-lab-' in name:
+                                if 'cyber-lab-' in name and '-student' in name:
                                     # Extract student ID from project prefix
                                     parts = name.split('-')
-                                    if len(parts) >= 3 and parts[0] == 'cyber' and parts[1] == 'lab':
-                                        student_id = parts[2]
-                                        student_ids.add(student_id)
-                                        break
-            
+                                    for i, part in enumerate(parts):
+                                        if part.startswith('student') and part[7:].isdigit():
+                                            student_ids.add(part)
+                                            break
             return student_ids
         except subprocess.CalledProcessError:
             print("❌ Failed to get running students")
@@ -489,6 +533,10 @@ class LabManager:
         students = self.read_students_csv(csv_file)
         if not students:
             return False
+        
+        # Ensure all assignments are complete before reconciliation
+        print("🔧 Ensuring all port and subnet assignments are complete...")
+        students = self.ensure_assignments(students, csv_file)
         
         # Get expected student IDs from CSV
         expected_students = {s['student_id']: s for s in students}
@@ -525,7 +573,8 @@ class LabManager:
                     student_data['student_id'],
                     student_data['student_name'],
                     student_data['port'],
-                    student_data['subnet_id']
+                    student_data['subnet_id'],
+                    csv_file
                 ):
                     success = False
         
@@ -547,11 +596,17 @@ class LabManager:
             print(f"❌ Student {student_id} not found in CSV file")
             return False
         
+        # Ensure assignments are complete for this student
+        print(f"🔧 Ensuring assignments are complete for student {student_id}...")
+        updated_students = self.ensure_assignments([student_data], csv_file)
+        updated_student = updated_students[0]
+        
         return self.spin_up_student(
-            student_data['student_id'],
-            student_data['student_name'],
-            student_data['port'],
-            student_data['subnet_id']
+            updated_student['student_id'],
+            updated_student['student_name'],
+            updated_student['port'],
+            updated_student['subnet_id'],
+            csv_file
         )
     
     def recreate_student(self, student_id: str, csv_file: str) -> bool:
@@ -564,29 +619,41 @@ class LabManager:
         
         print(f"🔄 Recreating containers for student: {student_data['student_name']} ({student_id})")
         
+        # Ensure assignments are complete for this student
+        print(f"🔧 Ensuring assignments are complete for student {student_id}...")
+        updated_students = self.ensure_assignments([student_data], csv_file)
+        updated_student = updated_students[0]
+        
         # First spin down
         self.spin_down_student(student_id)
         
         # Then spin up
         return self.spin_up_student(
-            student_data['student_id'],
-            student_data['student_name'],
-            student_data['port'],
-            student_data['subnet_id']
+            updated_student['student_id'],
+            updated_student['student_name'],
+            updated_student['port'],
+            updated_student['subnet_id'],
+            csv_file
         )
     
     def list_student_containers(self, student_id: str) -> List[Dict[str, str]]:
         """List all containers for a specific student."""
         try:
+            # Look for all containers, then filter by student ID
             result = self.run_command([
-                "docker", "ps", "-a", "--format", "json",
-                "--filter", f"name=cyber-lab-{student_id}-"
+                "docker", "ps", "-a", "--format", "json"
             ])
             
             containers: List[Dict[str, str]] = []
-            for line in result.stdout.strip().split('\n'):
-                if line:
-                    containers.append(json.loads(line))
+            if result.stdout.strip():
+                for line in result.stdout.strip().split('\n'):
+                    if line:
+                        container = json.loads(line)
+                        names = container.get('Names', '')
+                        
+                        # Check if this container belongs to the student
+                        if names and student_id in names:
+                            containers.append(container)
             
             return containers
         except subprocess.CalledProcessError:
@@ -617,13 +684,13 @@ class LabManager:
     def show_all_students(self) -> None:
         """Show all lab containers grouped by student."""
         try:
+            # Get all containers and filter for lab-related ones
             result = self.run_command([
-                "docker", "ps", "-a", "--format", "json",
-                "--filter", "name=cyber-lab-"
+                "docker", "ps", "-a", "--format", "json"
             ])
             
             if not result.stdout.strip():
-                print("No lab containers found")
+                print("No containers found")
                 return
             
             # Group containers by student ID
@@ -637,17 +704,24 @@ class LabManager:
                     student_id = None
                     if names:
                         for name in names.split(','):
-                            if 'cyber-lab-' in name:
-                                # Extract student ID from project prefix
+                            # Look for student IDs in various naming patterns
+                            if 'student' in name:
                                 parts = name.split('-')
-                                if len(parts) >= 3 and parts[0] == 'cyber' and parts[1] == 'lab':
-                                    student_id = parts[2]
+                                for part in parts:
+                                    if part.startswith('student') and part[7:].isdigit():
+                                        student_id = part
+                                        break
+                                if student_id:
                                     break
                     
                     if student_id:
                         if student_id not in students:
                             students[student_id] = []
                         students[student_id].append(container)
+            
+            if not students:
+                print("No lab containers found")
+                return
             
             print("\n📋 All Lab Containers:")
             print("=" * 80)
