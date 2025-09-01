@@ -2,15 +2,19 @@ services:
   # Kali Linux Jump Box - Externally accessible
   kali-jump:
     build: ./kali-jump
-    container_name: kali-jump-box
+    container_name: kali-jump-${STUDENT_ID:-test}
     hostname: kali-jump
     networks:
       cyber-lab-network:
-        ipv4_address: 172.20.0.10
+        ipv4_address: 172.20.${SUBNET_ID:-0}.10
     ports:
-      - "2222:22"  # External SSH access on port 2222
+      - "${SSH_PORT:-2222}:22"  # External SSH access
     cap_add:
       - NET_ADMIN  # Seems to be required for nmap to work
+    labels:
+      - "lab.student.id=${STUDENT_ID:-test}"
+      - "lab.student.name=${STUDENT_NAME:-Test User}"
+      - "lab.student.port=${SSH_PORT:-2222}"
       
     # fork bomb protection
     pids_limit: 2048
@@ -23,11 +27,14 @@ services:
   # Ubuntu Target 1 - Internal only
   ubuntu-target1:
     build: ./ubuntu-target1
-    container_name: ubuntu-target1
+    container_name: ubuntu-target1-${STUDENT_ID:-test}
     hostname: ubuntu-target1
     networks:
       cyber-lab-network:
-        ipv4_address: 172.20.0.11
+        ipv4_address: 172.20.${SUBNET_ID:-0}.11
+    labels:
+      - "lab.student.id=${STUDENT_ID:-test}"
+      - "lab.student.name=${STUDENT_NAME:-Test User}"
 
     # fork bomb protection
     pids_limit: 1024
@@ -40,11 +47,14 @@ services:
   # Ubuntu Target 2 - Internal only
   ubuntu-target2:
     build: ./ubuntu-target2
-    container_name: ubuntu-target2
+    container_name: ubuntu-target2-${STUDENT_ID:-test}
     hostname: ubuntu-target2
     networks:
       cyber-lab-network:
-        ipv4_address: 172.20.0.12
+        ipv4_address: 172.20.${SUBNET_ID:-0}.12
+    labels:
+      - "lab.student.id=${STUDENT_ID:-test}"
+      - "lab.student.name=${STUDENT_NAME:-Test User}"
 
     # fork bomb protection
     pids_limit: 1024
@@ -56,8 +66,9 @@ services:
 
 networks:
   cyber-lab-network:
+    name: ${NETWORK_NAME:-cyber-lab-test}
     driver: bridge
     ipam:
       config:
-        - subnet: 172.20.0.0/24
-          gateway: 172.20.0.1
+        - subnet: 172.20.${SUBNET_ID:-0}.0/24
+          gateway: 172.20.${SUBNET_ID:-0}.1

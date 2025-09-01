@@ -24,6 +24,9 @@ Thumbs.db
 .idea/
 *.code-workspace
 
+# students list shouldn't be committed
+students.csv
+
 # Student data (if you add persistent volumes)
 student-data/
 lab-results/
