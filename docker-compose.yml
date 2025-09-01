@@ -10,6 +10,8 @@ services:
         ipv4_address: 172.20.0.10
     ports:
       - "2222:22"  # External SSH access on port 2222
+    cap_add:
+      - NET_ADMIN  # Seems to be required for nmap to work
     restart: unless-stopped
 
   # Ubuntu Target 1 - Internal only
