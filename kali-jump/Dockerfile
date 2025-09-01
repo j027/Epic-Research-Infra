@@ -1,27 +1,7 @@
 FROM kalilinux/kali-rolling:latest
 
 # Update and install essential packages
-RUN apt-get update && apt-get install -y \
-    openssh-server \
-    sudo \
-    nano \
-    vim \
-    curl \
-    wget \
-    net-tools \
-    iputils-ping \
-    nmap \
-    netcat-traditional \
-    tcpdump \
-    wireshark-common \
-    hydra \
-    john \
-    hashcat \
-    metasploit-framework \
-    nikto \
-    dirb \
-    gobuster \
-    sqlmap \
+RUN apt-get update && apt-get install -y kali-linux-headless \
     && rm -rf /var/lib/apt/lists/*
 
 # Create a user for SSH access (only if they don't exist)
@@ -29,23 +9,12 @@ RUN id student >/dev/null 2>&1 || (useradd -m -s /bin/bash student && \
     echo 'student:cybersec123' | chpasswd && \
     usermod -aG sudo student)
 
-# Configure SSH
+# configure ssh
 RUN mkdir -p /var/run/sshd && \
-    echo 'PasswordAuthentication yes' >> /etc/ssh/sshd_config && \
-    echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config && \
-    echo 'PubkeyAuthentication yes' >> /etc/ssh/sshd_config && \
-    sed -i 's/#Port 22/Port 22/' /etc/ssh/sshd_config && \
+    sed -i 's/#PasswordAuthentication .*/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
+    sed -i 's/#PubkeyAuthentication .*/PubkeyAuthentication yes/' /etc/ssh/sshd_config && \
+    sed -i 's/#Port .*/Port 22/' /etc/ssh/sshd_config && \
     ssh-keygen -A
-
-# Set root password
-RUN echo 'root:rootpass123' | chpasswd
-
-# Create startup script that handles missing log files
-RUN echo '#!/bin/bash' > /start.sh && \
-    echo 'service ssh start' >> /start.sh && \
-    echo 'touch /var/log/auth.log' >> /start.sh && \
-    echo 'tail -f /var/log/auth.log' >> /start.sh && \
-    chmod +x /start.sh
 
 # Create a welcome message
 RUN echo "echo 'Welcome to Kali Linux Jump Box - Cybersecurity Lab Environment'" >> /etc/bash.bashrc && \
@@ -56,4 +25,4 @@ RUN echo "echo 'Welcome to Kali Linux Jump Box - Cybersecurity Lab Environment'"
 
 EXPOSE 22
 
-CMD ["/start.sh"]
+CMD ["/usr/sbin/sshd","-D","-e"]
