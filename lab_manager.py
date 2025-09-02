@@ -468,6 +468,34 @@ class LabManager:
         except subprocess.CalledProcessError:
             print(f"❌ Failed to remove containers for {student_info['student_name']}")
             return False
+
+    def force_remove_student_containers(self, student_id: str) -> bool:
+        """Force remove containers for a student ID without requiring CSV data.
+        
+        This is used during reconciliation to remove extra containers that are not in the CSV.
+        """
+        print(f"🔽 Force removing containers for student: {student_id}")
+        
+        try:
+            # Set up basic environment variables for compose down
+            # We don't have full student data, but we can provide the essential ones
+            env = {
+                "STUDENT_ID": student_id,
+                "NETWORK_NAME": f"cyber-lab-{student_id}",  # Standard network name
+            }
+
+            # Use project name to remove containers with environment
+            self.run_command([
+                "docker", "compose", 
+                "-f", self.compose_file,
+                "-p", f"cyber-lab-{student_id}",  # Project name for isolation
+                "down", "--volumes", "--remove-orphans"
+            ], env=env, capture_output=False)
+            print(f"✅ Containers removed for {student_id}")
+            return True
+        except subprocess.CalledProcessError:
+            print(f"❌ Failed to remove containers for {student_id}")
+            return False
     
     def spin_up_class(self, csv_file: str, parallel: bool = True) -> bool:
         """Spin up containers for all students in the CSV file."""
@@ -582,16 +610,20 @@ class LabManager:
                         names = container.get('Names', '')
                         
                         # Extract student ID from container names
-                        # Names like: cyber-lab-student001-kali-jump-1 or kali-jump-student001
+                        # Service containers are named: {service}-{student_id}
+                        # Examples: kali-jump-student001, ubuntu-target1-student002, etc.
                         if names:
                             for name in names.split(','):
-                                if 'cyber-lab-' in name and '-student' in name:
-                                    # Extract student ID from project prefix
+                                # Look for our service patterns
+                                if any(service in name for service in ['kali-jump-', 'ubuntu-target1-', 'ubuntu-target2-']):
+                                    # Extract student ID from the end of the name
                                     parts = name.split('-')
-                                    for i, part in enumerate(parts):
-                                        if part.startswith('student') and part[7:].isdigit():
-                                            student_ids.add(part)
-                                            break
+                                    if len(parts) >= 2:
+                                        potential_id = parts[-1]  # Last part should be student ID
+                                        # Accept any student ID that looks like an alphanumeric identifier
+                                        # This includes: student001, test001, extratest001, debugtest001, etc.
+                                        if potential_id and len(potential_id) >= 3:
+                                            student_ids.add(potential_id)
             return student_ids
         except subprocess.CalledProcessError:
             print("❌ Failed to get running students")
@@ -630,7 +662,7 @@ class LabManager:
         if to_remove:
             print(f"\n🛑 Removing {len(to_remove)} extra students...")
             for student_id in to_remove:
-                if not self.spin_down_student(student_id):
+                if not self.force_remove_student_containers(student_id):
                     success = False
         
         # Add missing students

@@ -105,7 +105,7 @@ class TestDockerIntegration:
             'nettest001', 'nettest002',
             'individualtest001', 'removetest001', 'recreatetest001',
             'reconciletest001', 'reconciletest002', 'extratest001', 'extratest002', 'extratest003',
-            'assigntest001', 'assigntest002'
+            'assigntest001', 'assigntest002', 'mixedtest001', 'mixedtest002', 'mixedtest003'
         ]
         for project in project_names:
             try:
@@ -570,37 +570,55 @@ class TestReconciliation(TestDockerIntegration):
         """Test reconciliation when students are missing from running environment"""
         print("\n🔄 Testing reconcile with missing students...")
         
-        # Create CSV with students but don't start them
+        # Create CSV with students but DON'T start them - test the ADD case
         test_data = [
-            {'student_id': 'reconciletest001', 'student_name': 'Reconcile Test 1', 'port': '2222', 'subnet_id': '10'},
-            {'student_id': 'reconciletest002', 'student_name': 'Reconcile Test 2', 'port': '2223', 'subnet_id': '11'}
+            {'student_id': 'reconciletest001', 'student_name': 'Reconcile Test 1', 'port': '', 'subnet_id': ''},
+            {'student_id': 'reconciletest002', 'student_name': 'Reconcile Test 2', 'port': '', 'subnet_id': ''}
         ]
         csv_file = self.create_test_csv(test_data)
         
-        # Run reconciliation (should start missing students)
+        # Verify no containers are running initially
+        health1_before = self.check_container_health('kali-jump-reconciletest001')
+        health2_before = self.check_container_health('kali-jump-reconciletest002')
+        assert not health1_before['running'], "Container 1 should not be running initially"
+        assert not health2_before['running'], "Container 2 should not be running initially"
+        
+        # Run reconciliation (should ADD the missing students)
         success = self.lab_manager.reconcile_with_csv(csv_file)
         assert success, "Reconciliation failed"
         
-        # Verify students were started
+        # Verify students were ADDED by reconciliation
         container1_ready = self.wait_for_container_ready('kali-jump-reconciletest001', max_wait=30)
         container2_ready = self.wait_for_container_ready('kali-jump-reconciletest002', max_wait=30)
         
-        if container1_ready and container2_ready:
-            health1 = self.check_container_health('kali-jump-reconciletest001')
-            health2 = self.check_container_health('kali-jump-reconciletest002')
-            
-            assert health1['running'], "First student not running after reconciliation"
-            assert health2['running'], "Second student not running after reconciliation"
+        assert container1_ready, "First student container not started by reconciliation"
+        assert container2_ready, "Second student container not started by reconciliation"
+        
+        # Verify containers are actually running
+        health1 = self.check_container_health('kali-jump-reconciletest001')
+        health2 = self.check_container_health('kali-jump-reconciletest002')
+        
+        assert health1['running'], "First student not running after reconciliation"
+        assert health2['running'], "Second student not running after reconciliation"
+        
+        # Verify assignments were made during reconciliation
+        students = self.lab_manager.read_students_csv(csv_file)
+        assert len(students) == 2, "Should have 2 students"
+        for student in students:
+            assert student['port'] >= 2222, f"Port not assigned during reconciliation: {student}"
+            assert student['subnet_id'] is not None and int(student['subnet_id']) > 0, f"Subnet not assigned during reconciliation: {student}"
+        
+        print(f"  ✅ Reconciliation successfully ADDED {len(students)} missing students")
         
         # Cleanup
         self.lab_manager.spin_down_class(csv_file, parallel=False)
     
     @pytest.mark.slow
     def test_reconcile_extra_containers(self):
-        """Test reconciliation when there are extra running containers"""
-        print("\n🔄 Testing reconcile with extra containers...")
+        """Test reconciliation when there are extra running containers that need to be REMOVED"""
+        print("\n🔄 Testing reconcile with extra containers (REMOVE case)...")
         
-        # Start with multiple students
+        # Step 1: Start with 3 students
         initial_data = [
             {'student_id': 'extratest001', 'student_name': 'Extra Test 1', 'port': '', 'subnet_id': ''},
             {'student_id': 'extratest002', 'student_name': 'Extra Test 2', 'port': '', 'subnet_id': ''},
@@ -608,62 +626,65 @@ class TestReconciliation(TestDockerIntegration):
         ]
         csv_file = self.create_test_csv(initial_data)
         
-        # Start all students
+        # Start all 3 students
         success = self.lab_manager.spin_up_class(csv_file, parallel=False)
         assert success, "Failed to start initial students"
         
-        # Wait for containers
+        # Wait for all containers to be ready
         containers_ready = 0
+        container_states_before = {}
         for student in initial_data:
-            if self.wait_for_container_ready(f'kali-jump-{student["student_id"]}', max_wait=20):
+            container_name = f'kali-jump-{student["student_id"]}'
+            if self.wait_for_container_ready(container_name, max_wait=20):
                 containers_ready += 1
+                container_states_before[student["student_id"]] = self.check_container_health(container_name)
         
-        if containers_ready >= 2:
-            # Now create a new CSV with fewer students and SAME port assignments
-            # to ensure we're testing reconciliation properly
-            students_with_assignments = self.lab_manager.read_students_csv(csv_file)
-            reduced_data = [
-                {
-                    'student_id': 'extratest001', 
-                    'student_name': 'Extra Test 1', 
-                    'port': students_with_assignments[0]['port'], 
-                    'subnet_id': students_with_assignments[0]['subnet_id']
-                },
-                {
-                    'student_id': 'extratest002', 
-                    'student_name': 'Extra Test 2', 
-                    'port': students_with_assignments[1]['port'], 
-                    'subnet_id': students_with_assignments[1]['subnet_id']
-                }
-                # extratest003 is removed from CSV - this should trigger its removal
-            ]
-            reduced_csv_file = self.create_test_csv(reduced_data)
-            
-            # Run reconciliation - note: current implementation only handles adding missing students
-            # For comprehensive reconciliation, we would need to enhance the logic
-            success = self.lab_manager.reconcile_with_csv(reduced_csv_file)
-            assert success, "Reconciliation failed"
-            
-            # Current reconciliation implementation doesn't remove extra containers automatically
-            # This is actually desired behavior for safety - manual removal is required
-            # So we'll test that the expected students are still running correctly
-            time.sleep(3)
-            
-            # Verify expected students are still running
-            health1 = self.check_container_health('kali-jump-extratest001')
-            health2 = self.check_container_health('kali-jump-extratest002')
-            health3 = self.check_container_health('kali-jump-extratest003')
-            
-            assert health1['running'], "Student 1 should still be running"
-            assert health2['running'], "Student 2 should still be running"
-            # Note: extratest003 will still be running since current reconciliation 
-            # doesn't automatically remove extra students for safety
-            print(f"  Note: extratest003 still running as expected (safety feature)")
-            
-            # Manual cleanup of all containers
-            self.lab_manager.spin_down_class(csv_file, parallel=False)
-        else:
-            pytest.skip("Could not start enough containers for reconciliation test")
+        assert containers_ready >= 2, f"Only {containers_ready}/3 initial containers started"
+        print(f"  ✅ Started {containers_ready} initial containers")
+        
+        # Step 2: Create a new CSV with only 2 students (removing extratest003)
+        # Use the actual port assignments from the running containers
+        running_students = self.lab_manager.read_students_csv(csv_file)
+        reduced_data = [
+            {
+                'student_id': 'extratest001', 
+                'student_name': 'Extra Test 1', 
+                'port': running_students[0]['port'], 
+                'subnet_id': running_students[0]['subnet_id']
+            },
+            {
+                'student_id': 'extratest002', 
+                'student_name': 'Extra Test 2', 
+                'port': running_students[1]['port'], 
+                'subnet_id': running_students[1]['subnet_id']
+            }
+            # extratest003 is intentionally REMOVED from the new CSV
+        ]
+        reduced_csv_file = self.create_test_csv(reduced_data)
+        
+        # Step 3: Run reconciliation - this should REMOVE extratest003
+        print(f"  🔄 Running reconciliation to remove extratest003...")
+        success = self.lab_manager.reconcile_with_csv(reduced_csv_file)
+        assert success, "Reconciliation failed"
+        
+        # Step 4: Verify reconciliation results
+        time.sleep(5)  # Give time for removal to complete
+        
+        # Check that extratest003 was REMOVED
+        health3_after = self.check_container_health('kali-jump-extratest003')
+        assert not health3_after['running'], "extratest003 should have been REMOVED by reconciliation"
+        
+        # Check that extratest001 and extratest002 are still running
+        health1_after = self.check_container_health('kali-jump-extratest001')
+        health2_after = self.check_container_health('kali-jump-extratest002')
+        assert health1_after['running'], "extratest001 should still be running after reconciliation"
+        assert health2_after['running'], "extratest002 should still be running after reconciliation"
+        
+        print(f"  ✅ Reconciliation successfully REMOVED extratest003")
+        print(f"  ✅ extratest001 and extratest002 still running as expected")
+        
+        # Cleanup remaining containers
+        self.lab_manager.spin_down_class(reduced_csv_file, parallel=False)
     
     def test_reconcile_assignment_updates(self):
         """Test reconciliation when CSV has assignment updates"""
@@ -692,6 +713,80 @@ class TestReconciliation(TestDockerIntegration):
         
         # Cleanup any containers that might have been started
         self.lab_manager.spin_down_class(csv_file, parallel=False)
+    
+    @pytest.mark.slow
+    def test_reconcile_mixed_add_and_remove(self):
+        """Test reconciliation with both ADD and REMOVE operations in one pass"""
+        print("\n🔄 Testing reconcile with mixed ADD and REMOVE operations...")
+        
+        # Step 1: Start with initial set of students
+        initial_data = [
+            {'student_id': 'mixedtest001', 'student_name': 'Mixed Test 1', 'port': '', 'subnet_id': ''},
+            {'student_id': 'mixedtest002', 'student_name': 'Mixed Test 2', 'port': '', 'subnet_id': ''}
+        ]
+        initial_csv = self.create_test_csv(initial_data)
+        
+        # Start the initial students
+        success = self.lab_manager.spin_up_class(initial_csv, parallel=False)
+        assert success, "Failed to start initial students"
+        
+        # Wait for initial containers
+        container1_ready = self.wait_for_container_ready('kali-jump-mixedtest001', max_wait=30)
+        container2_ready = self.wait_for_container_ready('kali-jump-mixedtest002', max_wait=30)
+        assert container1_ready and container2_ready, "Initial containers failed to start"
+        
+        # Step 2: Create new CSV that removes mixedtest001 and adds mixedtest003
+        running_students = self.lab_manager.read_students_csv(initial_csv)
+        mixed_data = [
+            # Keep mixedtest002 (no change)
+            {
+                'student_id': 'mixedtest002', 
+                'student_name': 'Mixed Test 2', 
+                'port': running_students[1]['port'], 
+                'subnet_id': running_students[1]['subnet_id']
+            },
+            # Add new student mixedtest003
+            {'student_id': 'mixedtest003', 'student_name': 'Mixed Test 3', 'port': '', 'subnet_id': ''}
+            # Remove mixedtest001 (not in new CSV)
+        ]
+        mixed_csv = self.create_test_csv(mixed_data)
+        
+        # Step 3: Run reconciliation (should REMOVE mixedtest001 and ADD mixedtest003)
+        print("  🔄 Running mixed reconciliation...")
+        success = self.lab_manager.reconcile_with_csv(mixed_csv)
+        assert success, "Mixed reconciliation failed"
+        
+        # Step 4: Verify the results
+        time.sleep(5)  # Give time for changes to complete
+        
+        # mixedtest001 should be REMOVED
+        health1 = self.check_container_health('kali-jump-mixedtest001')
+        assert not health1['running'], "mixedtest001 should have been REMOVED"
+        
+        # mixedtest002 should still be running (unchanged)
+        health2 = self.check_container_health('kali-jump-mixedtest002')
+        assert health2['running'], "mixedtest002 should still be running"
+        
+        # mixedtest003 should be ADDED
+        container3_ready = self.wait_for_container_ready('kali-jump-mixedtest003', max_wait=30)
+        assert container3_ready, "mixedtest003 should have been ADDED"
+        
+        health3 = self.check_container_health('kali-jump-mixedtest003')
+        assert health3['running'], "mixedtest003 should be running after being added"
+        
+        print("  ✅ Mixed reconciliation: REMOVED mixedtest001, KEPT mixedtest002, ADDED mixedtest003")
+        
+        # Verify assignments were made for the new student
+        final_students = self.lab_manager.read_students_csv(mixed_csv)
+        assert len(final_students) == 2, "Should have 2 students after reconciliation"
+        
+        mixedtest003_data = next((s for s in final_students if s['student_id'] == 'mixedtest003'), None)
+        assert mixedtest003_data is not None, "mixedtest003 data should exist"
+        assert mixedtest003_data['port'] >= 2222, "mixedtest003 should have assigned port"
+        assert mixedtest003_data['subnet_id'] is not None and int(mixedtest003_data['subnet_id']) > 0, "mixedtest003 should have assigned subnet"
+        
+        # Cleanup
+        self.lab_manager.spin_down_class(mixed_csv, parallel=False)
 
 
 @pytest.mark.integration
