@@ -194,6 +194,40 @@ class LabManager:
         used_ports = self.get_used_ports(csv_file)
         used_subnets = self.get_used_subnets(csv_file)
         
+        # Read existing student assignments to check ownership
+        existing_students = self.read_students_csv(csv_file, update_if_changed=False)
+        existing_port_owners = {}  # port -> student_id mapping
+        existing_subnet_owners = {}  # subnet -> student_id mapping
+        duplicate_ports = set()  # ports that are duplicated in CSV
+        duplicate_subnets = set()  # subnets that are duplicated in CSV
+        
+        # Track which ports/subnets appear multiple times in CSV
+        port_counts = {}
+        subnet_counts = {}
+        
+        for existing in existing_students:
+            if existing.get('port') and existing['port'] > 0:
+                port = existing['port']
+                port_counts[port] = port_counts.get(port, 0) + 1
+                if port_counts[port] == 1:
+                    existing_port_owners[port] = existing['student_id']
+                else:
+                    # This port appears multiple times - mark as duplicate
+                    duplicate_ports.add(port)
+                    
+            if existing.get('subnet_id') and existing['subnet_id'] is not None:
+                subnet = existing['subnet_id']
+                subnet_counts[subnet] = subnet_counts.get(subnet, 0) + 1
+                if subnet_counts[subnet] == 1:
+                    existing_subnet_owners[subnet] = existing['student_id']
+                else:
+                    # This subnet appears multiple times - mark as duplicate
+                    duplicate_subnets.add(subnet)
+        
+        # Track ports and subnets assigned within this batch to prevent duplicates
+        assigned_ports_in_batch = set()
+        assigned_subnets_in_batch = set()
+        
         updated_students = []
         changes_made = False
         
@@ -201,24 +235,59 @@ class LabManager:
             updated_student = student.copy()
             
             # Ensure valid port assignment
-            if not student.get('port') or student['port'] <= 0 or student['port'] in used_ports:
-                new_port = self.auto_assign_port(used_ports)
+            needs_new_port = False
+            if not student.get('port') or student['port'] <= 0:
+                needs_new_port = True
+            elif student['port'] in assigned_ports_in_batch:
+                # Port was already assigned to another student in this batch
+                needs_new_port = True
+            elif student['port'] in duplicate_ports:
+                # Port appears multiple times in CSV - needs reassignment for all
+                needs_new_port = True
+            elif student['port'] in used_ports:
+                # Port is in CSV - check if it's owned by this same student
+                current_owner = existing_port_owners.get(student['port'])
+                if current_owner != student['student_id']:
+                    # Port is owned by a different student - needs reassignment
+                    needs_new_port = True
+            
+            if needs_new_port:
+                new_port = self.auto_assign_port(used_ports | assigned_ports_in_batch)
+                assigned_ports_in_batch.add(new_port)
                 used_ports.add(new_port)
                 updated_student['port'] = new_port
                 print(f"🔧 Assigned port {new_port} to student {student['student_id']}")
                 changes_made = True
             else:
+                assigned_ports_in_batch.add(student['port'])
                 used_ports.add(student['port'])
             
             # Ensure valid subnet assignment
-            if not student.get('subnet_id') or student['subnet_id'] in used_subnets:
-                new_subnet = self.calculate_subnet_id(student['student_id'], used_subnets)
+            needs_new_subnet = False
+            if not student.get('subnet_id') or student['subnet_id'] is None:
+                needs_new_subnet = True
+            elif student['subnet_id'] in assigned_subnets_in_batch:
+                # Subnet was already assigned to another student in this batch
+                needs_new_subnet = True
+            elif student['subnet_id'] in duplicate_subnets:
+                # Subnet appears multiple times in CSV - needs reassignment for all
+                needs_new_subnet = True
+            elif student['subnet_id'] in used_subnets:
+                # Subnet is in CSV - check if it's owned by this same student
+                current_owner = existing_subnet_owners.get(student['subnet_id'])
+                if current_owner != student['student_id']:
+                    # Subnet is owned by a different student - needs reassignment
+                    needs_new_subnet = True
+            
+            if needs_new_subnet:
+                new_subnet = self.calculate_subnet_id(student['student_id'], used_subnets | assigned_subnets_in_batch)
+                assigned_subnets_in_batch.add(new_subnet)
                 used_subnets.add(new_subnet)
                 updated_student['subnet_id'] = new_subnet
                 print(f"🔧 Assigned subnet {new_subnet} to student {student['student_id']}")
                 changes_made = True
             else:
-                # Type safety: we know subnet_id is not None here due to the condition above
+                assigned_subnets_in_batch.add(student['subnet_id'])
                 subnet_id = student['subnet_id']
                 if subnet_id is not None:
                     used_subnets.add(subnet_id)
