@@ -24,6 +24,15 @@ Thumbs.db
 .idea/
 *.code-workspace
 
+# Python stuff
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
 # students list shouldn't be committed
 students.csv
 
