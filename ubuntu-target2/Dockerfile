@@ -14,8 +14,7 @@ RUN apt-get update && apt-get install -y \
     wget \
     net-tools \
     iputils-ping \
-    nginx \
-    && rm -rf /var/lib/apt/lists/*
+    nginx
 
 # Create users for SSH access (only if they don't exist)
 RUN id student >/dev/null 2>&1 || (useradd -m -s /bin/bash student && \

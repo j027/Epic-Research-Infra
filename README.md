@@ -8,10 +8,10 @@ This Docker environment provides a realistic cybersecurity lab setup for educati
 ## Architecture Overview
 
 ```
-Network → Port 2222 → Kali Jump Box (172.20.0.10)
+Network → Port 2222 → Kali Jump Box (172.20.<subnet>.10)
                             ↓ Internal Network
-                       Ubuntu Target 1 (172.20.0.11)
-                       Ubuntu Target 2 (172.20.0.12)
+                       Ubuntu Target 1 (172.20.<subnet>.11)
+                       Ubuntu Target 2 (172.20.<subnet>.12)
 ```
 
 ## Usage
