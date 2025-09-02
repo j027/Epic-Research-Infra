@@ -544,7 +544,7 @@ class LabManager:
             with ThreadPoolExecutor(max_workers=5) as executor:
                 # Submit all tasks
                 future_to_student = {
-                    executor.submit(self.spin_down_student, student['student_id']): student 
+                    executor.submit(self.spin_down_student, student['student_id'], csv_file): student 
                     for student in students
                 }
                 
@@ -560,7 +560,7 @@ class LabManager:
             # Sequential execution
             success_count = 0
             for student in students:
-                if self.spin_down_student(student['student_id']):
+                if self.spin_down_student(student['student_id'], csv_file):
                     success_count += 1
         
         print(f"✅ Successfully removed containers for {success_count}/{len(students)} students")
