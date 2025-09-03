@@ -853,8 +853,8 @@ class LabManager:
             print("Valid types: kali, ubuntu1, ubuntu2")
             return
         
-        # With docker-compose project naming, containers are named: cyber-lab-{student_id}-{service}-1
-        container_name = f"cyber-lab-{student_id}-{service_map[container_type]}-1"
+        # Containers are named: {service}-{student_id}
+        container_name = f"{service_map[container_type]}-{student_id}"
         
         print(f"🔍 Executing into {container_name}...")
         try:
@@ -907,13 +907,6 @@ def main():
     student_parser = subparsers.add_parser("student", help="Manage individual student")
     student_subparsers = student_parser.add_subparsers(dest="student_action")
     
-    add_parser = student_subparsers.add_parser("add", help="Add/start a single student")
-    add_parser.add_argument("student_id", help="Student ID")
-    add_parser.add_argument("csv_file", help="CSV file with student data")
-    
-    remove_parser = student_subparsers.add_parser("remove", help="Remove/stop a single student")
-    remove_parser.add_argument("student_id", help="Student ID")
-    
     recreate_parser = student_subparsers.add_parser("recreate", help="Recreate student containers")
     recreate_parser.add_argument("student_id", help="Student ID")
     recreate_parser.add_argument("csv_file", help="CSV file with student data")
@@ -954,11 +947,7 @@ def main():
             class_parser.print_help()
     
     elif args.command == "student":
-        if args.student_action == "add":
-            lab_manager.spin_up_single_student(args.student_id, args.csv_file)
-        elif args.student_action == "remove":
-            lab_manager.spin_down_student(args.student_id)
-        elif args.student_action == "recreate":
+        if args.student_action == "recreate":
             lab_manager.recreate_student(args.student_id, args.csv_file)
         elif args.student_action == "status":
             lab_manager.show_student_status(args.student_id)

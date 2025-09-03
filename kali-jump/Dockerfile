@@ -21,7 +21,7 @@ RUN mkdir -p /var/run/sshd && \
 # Create a welcome message
 RUN echo "echo 'Welcome to Kali Linux Jump Box - Cybersecurity Lab Environment'" >> /etc/bash.bashrc && \
     echo "echo 'Use this machine to access the internal Ubuntu targets'" >> /etc/bash.bashrc && \
-    echo "echo 'Internal network: 172.20.0.0/24'" >> /etc/bash.bashrc && \
+    echo "echo 'Internal network: 172.20.<subnet_id>.0/24'" >> /etc/bash.bashrc && \
     echo "echo 'Kali Jump Box: kali-jump (172.20.<subnet_id>.10)'" >> /etc/bash.bashrc && \
     echo "echo 'Ubuntu Target 1: ubuntu-target1 (172.20.<subnet_id>.11)'" >> /etc/bash.bashrc && \
     echo "echo 'Ubuntu Target 2: ubuntu-target2 (172.20.<subnet_id>.12)'" >> /etc/bash.bashrc && \
