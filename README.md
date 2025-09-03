@@ -1,92 +1,136 @@
-# Epic-Research-Infra
-This repository is to store and track changes to the infrastructure being developed for the research project hosted by EPIC research at UMBC.
+# Epic Research Infrastructure
 
-# Cybersecurity Lab Environment
+This repository stores and tracks changes to the infrastructure being developed for the research project hosted by EPIC research at UMBC.
+
+## Overview
 
 This Docker environment provides a realistic cybersecurity lab setup for educational purposes, consisting of three machines in an isolated network environment.
 
-## Architecture Overview
+### Architecture
 
 ```
-Network → Port 2222 → Kali Jump Box (172.20.<subnet>.10)
-                            ↓ Internal Network
-                       Ubuntu Target 1 (172.20.<subnet>.11)
-                       Ubuntu Target 2 (172.20.<subnet>.12)
+External Network → Port 2222 → Kali Jump Box (172.20.<subnet>.10)
+                                       ↓ Internal Network
+                                Ubuntu Target 1 (172.20.<subnet>.11)
+                                Ubuntu Target 2 (172.20.<subnet>.12)
 ```
 
-# For Classroom Use
-## Requirements
+## Classroom Use
+
+### Requirements
+
 - Docker
-- Docker Compose
-- Linux Host to run docker
+- Docker Compose  
+- Linux host to run Docker
 - Python 3
 
-## Configure Students
-Copy the students_example.csv file to students.csv
+### Initial Setup
+
+#### 1. Configure Students
+
+Copy the example students file to create your configuration:
+
 ```bash
 cp students_example.csv students.csv
 ```
+
 Edit the new `students.csv` file to configure the student accounts.
 
-You must populate the student id and student name columns for each student.
-All other columns will be populated automatically when the script is used.
-> The file can be named anything you want, but the rest of this guide assumes it is named students.csv.
+**Important:** You must populate the student ID and student name columns for each student. All other columns will be populated automatically when the script is used.
 
-## Build initial docker images
-This is needed to set up the container images that will then be deployed in the classroom.
+> **Note:** The file can be named anything you want, but the rest of this guide assumes it is named `students.csv`.
+
+#### 2. Build Docker Images
+
+Build the initial Docker images that will be deployed in the classroom:
+
 ```bash
 ./lab_manager.py build
 ```
 
-## Create environment
+### Lab Management
+
+#### Start Lab Environment
+
 ```bash
 ./lab_manager.py class up students.csv
 ```
-## Reconcile with CSV
-This will add or remove students based on changes to the CSV file.
+
+#### Reconcile with CSV
+
+Add or remove students based on changes to the CSV file:
+
 ```bash
 ./lab_manager.py class reconcile students.csv
 ```
 
-## Spin Down Environment
+#### Stop Lab Environment
+
 ```bash
 ./lab_manager.py class down students.csv
 ```
 
-## Troubleshooting
-### Recreate Student Containers
-If a student has issues with their environment, their containers can be recreated like so.
+### Access & credentials
+
+Default login for lab containers:
+- Username: `student`
+- Password: `student123`
+
+**Important:** Students must change their password immediately after first login using the `passwd` command.
+
+### Troubleshooting
+
+#### Recreate Student Containers
+
+If a student has issues with their environment, their containers can be recreated:
+
 ```bash
 ./lab_manager.py student recreate <student_id> students.csv
 ```
 
-#### Drop into shell in student container
-For advanced users, if you would like to fix the student's container manually, you can drop into the shell like so.
-```bash
-./lab_manager.py student exec <student_id> <kali|ubuntu1|ubuntu2>
-```
-> kali|ubuntu1|ubuntu2 means the specific container you want to access and it should be one of those that you put in the command
+#### Access Student Container Shell
 
-### Check status of class containers
-This allows checking the status of all running student containers, grouped by student.
+For advanced users who need to manually fix a student's container:
+
+```bash
+./lab_manager.py student exec <student_id> <container_type>
+```
+
+**Container types:** `kali`, `ubuntu1`, or `ubuntu2`
+
+#### Check Container Status
+
+View the status of all running student containers, grouped by student:
+
 ```bash
 ./lab_manager.py list
 ```
 
-# For Development
+## Development
 
-### Build and start up containers
-This sets up the environment for a test student, making it easier to develop.
+### Quick Start
+
+Set up the environment for a test student to make development easier:
+
 ```bash
 sudo docker compose build
 sudo docker compose up -d
 ```
 
-> The Kali Linux jump box will be forwarded at port 2222 and it will have a subnet id of 0.
+> **Note:** The Kali Linux jump box will be forwarded at port 2222 and will have a subnet ID of 0.
 
-### Tear down and destroy containers
+### Cleanup
+
 ```bash
 sudo docker compose down
 ```
 
-> Credentials for all containers are student:student123
+### Running Tests
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements-test.txt
+pytest
+deactivate
+```
