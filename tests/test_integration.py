@@ -217,8 +217,8 @@ class TestFullWorkflow(TestDockerIntegration):
         
         # Look for our expected images
         image_names = [img.get('Repository', '') for img in images]
-        expected_images = ['epic-project-kali-jump', 'epic-project-ubuntu-target1', 'epic-project-ubuntu-target2']
-        
+        expected_images = ['epic-research-infra-kali-jump', 'epic-research-infra-ubuntu-target1', 'epic-research-infra-ubuntu-target2']
+
         found_images = []
         for expected in expected_images:
             for image_name in image_names:
