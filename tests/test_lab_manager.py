@@ -438,9 +438,53 @@ class TestIntegrationScenarios:
             ports = [s['port'] for s in students]
             assert len(ports) == len(set(ports))  # No duplicates
             
-            # Bob should have been reassigned
+            # Both Alice and Bob should have been reassigned because port 2222 was duplicated
+            # (when a port appears multiple times in CSV, ALL instances get reassigned for data integrity)
+            alice = next(s for s in students if s['student_id'] == 'student001')
             bob = next(s for s in students if s['student_id'] == 'student002')
-            assert bob['port'] != 2222
+            assert alice['port'] != 2222, f"Alice should have been reassigned due to duplicate, but still has port {alice['port']}"
+            assert bob['port'] != 2222, f"Bob should have been reassigned due to duplicate, but still has port {bob['port']}"
+            
+        finally:
+            os.unlink(csv_file)
+    
+    def test_duplicate_subnet_handling_in_csv(self):
+        """Test handling of duplicate subnet IDs in CSV data"""
+        # Create CSV with duplicate subnet IDs (invalid scenario)
+        test_data = [
+            {'student_id': 'student001', 'student_name': 'Alice Smith', 'port': '2222', 'subnet_id': '42'},
+            {'student_id': 'student002', 'student_name': 'Bob Jones', 'port': '2223', 'subnet_id': '42'},  # Duplicate subnet!
+            {'student_id': 'student003', 'student_name': 'Carol Brown', 'port': '', 'subnet_id': ''}
+        ]
+        csv_file = self.create_test_csv(test_data)
+        
+        try:
+            students = self.lab_manager.read_students_csv(csv_file, update_if_changed=True)
+            
+            assert len(students) == 3
+            
+            # Check that all subnet IDs are unique after processing
+            subnet_ids = [s['subnet_id'] for s in students]
+            assert len(subnet_ids) == len(set(subnet_ids))  # No duplicates
+            
+            # Check that all subnets are in valid range and not None
+            for student in students:
+                subnet_id = student['subnet_id']
+                assert subnet_id is not None, f"Student {student['student_id']} has None subnet_id"
+                assert 1 <= subnet_id <= 254, f"Invalid subnet ID: {subnet_id}"
+            
+            # Bob should have been reassigned a different subnet
+            bob = next(s for s in students if s['student_id'] == 'student002')
+            assert bob['subnet_id'] != 42, f"Bob should have been reassigned, but still has subnet {bob['subnet_id']}"
+            
+            # Alice should also have been reassigned because subnet 42 was duplicated
+            # (when a subnet appears multiple times in CSV, ALL instances get reassigned)
+            alice = next(s for s in students if s['student_id'] == 'student001')
+            assert alice['subnet_id'] != 42, f"Alice should have been reassigned due to duplicate, but still has subnet {alice['subnet_id']}"
+            
+            # Carol should get a valid assignment (she had an empty subnet_id)
+            carol = next(s for s in students if s['student_id'] == 'student003')
+            assert carol['subnet_id'] is not None and 1 <= carol['subnet_id'] <= 254
             
         finally:
             os.unlink(csv_file)
