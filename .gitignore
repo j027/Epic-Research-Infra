@@ -32,6 +32,7 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+.venv/
 
 # students list shouldn't be committed
 students.csv
