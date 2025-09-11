@@ -115,7 +115,7 @@ Creates (or reuses) per‑student networks & containers. Assigns any missing por
 ```bash
 ./lab_manager.py class down students.csv
 ```
-> ⚠️ **Destructive:** Removes containers & ephemeral state. Any in‑container changes not on volumes are lost.
+> ⚠️ **Destructive:** Removes containers & ephemeral state. Any in‑container changes are lost.
 
 ### 5.4 Individual Student Lifecycle
 | Action | Command | Effect |
