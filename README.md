@@ -232,6 +232,18 @@ Parallel mode speeds up large cohorts; sequential mode is simpler to read.
 ---
 
 ## 11. License
-Licensed under the terms of the project license. See the [`LICENSE`](LICENSE) file.
+
+This project is licensed under the Unlicense (public domain). See the [`LICENSE`](LICENSE) file for details.
+
+### Third-Party Components
+
+This project includes third-party software components with different licenses:
+
+- **ubuntu-target1/**: Contains a Docker implementation of Metasploitable3
+  - Docker implementation by heywoodlh: MIT License
+  - Metasploitable3 by Rapid7, Inc.: BSD-3-Clause License
+  - See [`ubuntu-target1/LICENSE`](ubuntu-target1/LICENSE) for full license text
+
+For complete third-party licensing information, see [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
 ---
