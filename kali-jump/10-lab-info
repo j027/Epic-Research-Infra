@@ -1,0 +1,24 @@
+#!/bin/bash
+echo "=========================================="
+echo "  CYBERSECURITY LAB ENVIRONMENT"
+echo "=========================================="
+echo ""
+echo "Welcome to your Kali Linux Jump Box!"
+echo ""
+echo "Network Information:"
+# Get the actual IP and subnet from the container's network interface
+MY_IP=$(ip route get 1.1.1.1 | grep -oP 'src \K\S+' 2>/dev/null || hostname -I | awk '{print $1}')
+SUBNET=$(echo $MY_IP | cut -d. -f1-3)
+echo "  Internal Network: ${SUBNET}.0/24"
+echo "  Gateway: ${SUBNET}.1"
+echo ""
+echo "Lab Hosts:"
+echo "  Kali Jump Box:   kali-jump      ($MY_IP)"
+echo "  Ubuntu Target 1: ubuntu-target1 (${SUBNET}.11)"
+echo "  Ubuntu Target 2: ubuntu-target2 (${SUBNET}.12)"
+echo ""
+echo "Getting Started:"
+echo "  - Change password:  passwd"
+echo ""
+echo "⚠️  Please change your password after first login!"
+echo "=========================================="
