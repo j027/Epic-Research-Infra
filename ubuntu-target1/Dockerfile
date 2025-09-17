@@ -34,7 +34,7 @@ RUN printf "\ncookbook_file '/tmp/super_secret_db.sql' do\n  source 'flags/super
 
 ## Run the recipes
 RUN echo "cookbook_path [ '/opt/metasploitable3/chef/cookbooks' ]" > /opt/metasploitable3/solo.rb \
-	&& chef-solo -c /opt/metasploitable3/solo.rb -o "recipe[apt::default],recipe[metasploitable::users],recipe[metasploitable::mysql],recipe[metasploitable::apache_continuum],recipe[metasploitable::apache],recipe[metasploitable::php_545],recipe[metasploitable::phpmyadmin],recipe[metasploitable::proftpd],recipe[metasploitable::samba],recipe[metasploitable::sinatra],recipe[metasploitable::unrealircd],recipe[metasploitable::chatbot],recipe[metasploitable::payroll_app],recipe[metasploitable::readme_app],recipe[metasploitable::cups],recipe[metasploitable::drupal],recipe[metasploitable::knockd],recipe[metasploitable::flags],recipe[metasploitable::clear_cache]" 
+	&& chef-solo -c /opt/metasploitable3/solo.rb -o "recipe[apt::default],recipe[metasploitable::users],recipe[metasploitable::mysql],recipe[metasploitable::apache_continuum],recipe[metasploitable::apache],recipe[metasploitable::php_545],recipe[metasploitable::phpmyadmin],recipe[metasploitable::samba],recipe[metasploitable::sinatra],recipe[metasploitable::unrealircd],recipe[metasploitable::chatbot],recipe[metasploitable::payroll_app],recipe[metasploitable::readme_app],recipe[metasploitable::cups],recipe[metasploitable::drupal],recipe[metasploitable::knockd],recipe[metasploitable::flags],recipe[metasploitable::clear_cache]" 
 
 ## Dependencies for services
 RUN apt-get install -y sudo openssh-server mysql-server supervisor
