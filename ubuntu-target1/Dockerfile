@@ -30,11 +30,13 @@ RUN printf "\ncookbook_file '/tmp/drupal.sql' do\n  source 'drupal/drupal.sql'\n
 ## Copy flags.sql to /tmp/super_secret_db.sql
 RUN printf "\ncookbook_file '/tmp/super_secret_db.sql' do\n  source 'flags/super_secret_db.sql'\n  mode '0755'\nend\n" >> /opt/metasploitable3/chef/cookbooks/metasploitable/recipes/flags.rb
 
-
+# patch proftpd recipe to avoid modifying /etc/hosts
+# otherwise the build was failing - remove the entire execute block
+RUN sed -i '/execute.*add hostname to \/etc\/hosts/,/^end$/d' /opt/metasploitable3/chef/cookbooks/metasploitable/recipes/proftpd.rb
 
 ## Run the recipes
 RUN echo "cookbook_path [ '/opt/metasploitable3/chef/cookbooks' ]" > /opt/metasploitable3/solo.rb \
-	&& chef-solo -c /opt/metasploitable3/solo.rb -o "recipe[apt::default],recipe[metasploitable::users],recipe[metasploitable::mysql],recipe[metasploitable::apache_continuum],recipe[metasploitable::apache],recipe[metasploitable::php_545],recipe[metasploitable::phpmyadmin],recipe[metasploitable::samba],recipe[metasploitable::sinatra],recipe[metasploitable::unrealircd],recipe[metasploitable::chatbot],recipe[metasploitable::payroll_app],recipe[metasploitable::readme_app],recipe[metasploitable::cups],recipe[metasploitable::drupal],recipe[metasploitable::knockd],recipe[metasploitable::flags],recipe[metasploitable::clear_cache]" 
+	&& chef-solo -c /opt/metasploitable3/solo.rb -o "recipe[apt::default],recipe[metasploitable::users],recipe[metasploitable::mysql],recipe[metasploitable::apache_continuum],recipe[metasploitable::apache],recipe[metasploitable::php_545],recipe[metasploitable::phpmyadmin],recipe[metasploitable::proftpd],recipe[metasploitable::samba],recipe[metasploitable::sinatra],recipe[metasploitable::unrealircd],recipe[metasploitable::chatbot],recipe[metasploitable::payroll_app],recipe[metasploitable::readme_app],recipe[metasploitable::cups],recipe[metasploitable::drupal],recipe[metasploitable::knockd],recipe[metasploitable::flags],recipe[metasploitable::clear_cache]" 
 
 ## Dependencies for services
 RUN apt-get install -y sudo openssh-server mysql-server supervisor
@@ -47,11 +49,6 @@ RUN apt-get remove -y chef \
 	&& rm -rf /opt/metasploitable3 \
 	&& rm /tmp/chatbot.zip \
 	&& rm /tmp/phpMyAdmin*.tar.gz
-
-## Create vuln user for management
-RUN useradd --create-home -s /bin/bash vuln \
-        && echo vuln:vuln | chpasswd \
-	&& usermod -aG sudo vuln
 
 ##ProFTPD
 EXPOSE 21

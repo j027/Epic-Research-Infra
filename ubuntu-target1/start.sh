@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+# Add hostname to /etc/hosts for proftpd and other services
+CONTAINER_IP=$(hostname -i | awk '{print $1}')
+CONTAINER_HOSTNAME=$(hostname)
+if ! grep -q "$CONTAINER_IP $CONTAINER_HOSTNAME" /etc/hosts; then
+    echo "$CONTAINER_IP $CONTAINER_HOSTNAME" >> /etc/hosts
+fi
+
 sleep 5
 
 if ps aux | grep -q mysqld
