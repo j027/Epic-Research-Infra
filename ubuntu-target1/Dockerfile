@@ -32,7 +32,7 @@ RUN printf "\ncookbook_file '/tmp/super_secret_db.sql' do\n  source 'flags/super
 
 # patch proftpd recipe to avoid modifying /etc/hosts
 # otherwise the build was failing - remove the entire execute block
-RUN sed -i '/execute.*add hostname to \/etc\/hosts/,/^end$/d' /opt/metasploitable3/chef/cookbooks/metasploitable/recipes/proftpd.rb
+RUN perl -0777 -i.old -pe "s/execute 'add hostname to \/etc\/hosts'.*?^end$//gsm" /opt/metasploitable3/chef/cookbooks/metasploitable/recipes/proftpd.rb
 
 ## Run the recipes
 RUN echo "cookbook_path [ '/opt/metasploitable3/chef/cookbooks' ]" > /opt/metasploitable3/solo.rb \
