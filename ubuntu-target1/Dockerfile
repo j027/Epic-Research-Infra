@@ -65,7 +65,7 @@ EXPOSE 3000
 ## Readme_app
 EXPOSE 3500
 ## UnrealIRC
-EXPOSE 6697
+EXPOSE 6667
 ## MySQL
 EXPOSE 3306
 ## Sinatra
