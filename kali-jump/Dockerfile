@@ -1,4 +1,4 @@
-FROM kalilinux/kalilinux/kali-last-release:latest
+FROM kalilinux/kali-last-release:latest
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
