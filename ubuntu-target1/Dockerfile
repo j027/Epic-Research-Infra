@@ -2,6 +2,9 @@
 # to prevent things from breaking
 FROM heywoodlh/vulnerable@sha256:a608b548838c2bb947d62ee9e9a97bd7ef966c8ab0e27cbf6bddf5e55b578189
 
+# delete the user with a weak password
+RUN userdel -r vuln
+
 ##ProFTPD
 EXPOSE 21
 ## OpenSSH
