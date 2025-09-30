@@ -432,12 +432,21 @@ class LabManager:
         
         try:
             # Use project name to isolate each student's containers
-            self.run_command([
+            command = [
                 "docker", "compose", 
-                "-f", self.compose_file,
+                "-f", self.compose_file
+            ]
+            
+            # Add flags.env if it exists
+            if os.path.exists("flags.env"):
+                command.extend(["--env-file", "flags.env"])
+                
+            command.extend([
                 "-p", f"cyber-lab-{student_id}",  # Project name for isolation
                 "up", "-d"
-            ], env=env, capture_output=False)
+            ])
+            
+            self.run_command(command, env=env, capture_output=False)
             print(f"✅ Containers started for {student_name}")
             return True
         except subprocess.CalledProcessError:

@@ -2,6 +2,9 @@
 .env
 docker-compose.override.yml
 
+# Configuration files with secrets
+flags.env
+
 # Logs
 *.log
 

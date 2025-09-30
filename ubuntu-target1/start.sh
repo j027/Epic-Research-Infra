@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 
-echo "flag{cr4ck1n6_z1p5_4r3_fun}" > flag.txt 
-zip -p password flag.zip flag.txt 
-mv flag.zip /var/log/flag.zip
+/create-flag.sh
 
 if ps aux | grep -q mysqld
 then
