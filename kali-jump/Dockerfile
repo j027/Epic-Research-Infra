@@ -6,6 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install essential packages
 RUN apt-get update && apt-get install -y \
     iputils-ping \
+    iproute2 \
     metasploit-framework \
     nmap \
     libcap2-bin \

@@ -815,7 +815,7 @@ class TestNetworkIsolation(TestDockerIntegration):
         container2_ready = self.wait_for_container_ready('kali-jump-nettest002', max_wait=30)
         
         if container1_ready and container2_ready:
-            # Check that each student has their own network
+            # Check that each student has their own networks (DMZ + Internal)
             result = self.lab_manager.run_command(["docker", "network", "ls", "--format", "json"])
             networks = []
             if result.stdout.strip():
@@ -824,14 +824,235 @@ class TestNetworkIsolation(TestDockerIntegration):
                         networks.append(json.loads(line))
             
             student_networks = [net for net in networks if 'cyber-lab-nettest' in net.get('Name', '')]
-            assert len(student_networks) >= 2, f"Expected at least 2 student networks, found: {len(student_networks)}"
+            # Each student should have 2 networks (DMZ + Internal), so 2 students = 4 networks minimum
+            assert len(student_networks) >= 4, f"Expected at least 4 student networks (2 per student), found: {len(student_networks)}"
             
-            print(f"  Found {len(student_networks)} student networks")
+            # Check for both DMZ and Internal networks for each student
+            dmz_networks = [net for net in student_networks if 'dmz' in net.get('Name', '')]
+            internal_networks = [net for net in student_networks if 'internal' in net.get('Name', '')]
+            
+            assert len(dmz_networks) >= 2, f"Expected at least 2 DMZ networks, found: {len(dmz_networks)}"
+            assert len(internal_networks) >= 2, f"Expected at least 2 Internal networks, found: {len(internal_networks)}"
+            
+            print(f"  Found {len(student_networks)} student networks ({len(dmz_networks)} DMZ + {len(internal_networks)} Internal)")
         else:
             pytest.skip("Containers not ready for network isolation test")
         
         # Cleanup
         self.lab_manager.spin_down_class(csv_file, parallel=False)
+
+    @pytest.mark.slow
+    def test_dual_network_connectivity(self):
+        """Test that dual-network architecture works correctly with proper isolation and pivoting"""
+        print("\n🌐 Testing dual-network connectivity and isolation...")
+        
+        # Create test CSV with one student for focused network testing
+        test_data = [
+            {'student_id': 'netconntest001', 'student_name': 'Network Connectivity Test', 'port': '6666', 'subnet_id': '100'}
+        ]
+        csv_file = self.create_test_csv(test_data)
+        
+        # Spin up the student
+        success = self.lab_manager.spin_up_class(csv_file, parallel=False)
+        assert success, "Failed to spin up test student"
+        
+        # Wait for all containers to be ready
+        containers_ready = {}
+        for container_type in ["kali-jump", "ubuntu-target1", "ubuntu-target2"]:
+            container_name = f"{container_type}-netconntest001"
+            containers_ready[container_type] = self.wait_for_container_ready(container_name, max_wait=45)
+            assert containers_ready[container_type], f"{container_name} failed to start"
+        
+        print("  ✅ All containers started successfully")
+        
+        try:
+            # Test 1: Verify network interfaces and IP addresses
+            print("  🔍 Verifying network configuration...")
+            
+            # Check Kali Jump Box (should only be on DMZ network: 10.100.1.10)
+            result = self.lab_manager.run_command([
+                "docker", "exec", "kali-jump-netconntest001", 
+                "ip", "addr", "show"
+            ])
+            kali_interfaces = result.stdout
+            assert "10.100.1.10" in kali_interfaces, "Kali should have DMZ IP 10.100.1.10"
+            assert "192.168.100" not in kali_interfaces, "Kali should NOT have internal network access"
+            print("    ✅ Kali Jump Box: Only on DMZ network (10.100.1.10)")
+            
+            # Check Ubuntu Target 1 (should be dual-homed: 10.100.1.11 + 192.168.100.11)
+            result = self.lab_manager.run_command([
+                "docker", "exec", "ubuntu-target1-netconntest001", 
+                "ip", "addr", "show"
+            ])
+            target1_interfaces = result.stdout
+            assert "10.100.1.11" in target1_interfaces, "Target1 should have DMZ IP 10.100.1.11"
+            assert "192.168.100.11" in target1_interfaces, "Target1 should have Internal IP 192.168.100.11"
+            print("    ✅ Ubuntu Target 1: Dual-homed (10.100.1.11 + 192.168.100.11)")
+            
+            # Check Ubuntu Target 2 (should only be on internal network: 192.168.100.12)
+            result = self.lab_manager.run_command([
+                "docker", "exec", "ubuntu-target2-netconntest001", 
+                "ip", "addr", "show"
+            ])
+            target2_interfaces = result.stdout
+            assert "192.168.100.12" in target2_interfaces, "Target2 should have Internal IP 192.168.100.12"
+            assert "10.100.1" not in target2_interfaces, "Target2 should NOT have DMZ network access"
+            print("    ✅ Ubuntu Target 2: Only on Internal network (192.168.100.12)")
+            
+            # Test 2: Verify connectivity from Kali Jump Box
+            print("  🔗 Testing connectivity from Kali Jump Box...")
+            
+            # Kali should be able to reach Ubuntu Target 1 on DMZ network
+            result = self.lab_manager.run_command([
+                "docker", "exec", "kali-jump-netconntest001", 
+                "ping", "-c", "2", "-W", "3", "10.100.1.11"
+            ])
+            assert result.returncode == 0, "Kali should be able to ping Ubuntu Target 1 on DMZ"
+            print("    ✅ Kali → Ubuntu Target 1 (DMZ): Connected")
+            
+            # Kali should NOT be able to reach Ubuntu Target 2 directly (different network)
+            try:
+                result = self.lab_manager.run_command([
+                    "docker", "exec", "kali-jump-netconntest001", 
+                    "ping", "-c", "2", "-W", "3", "192.168.100.12"
+                ])
+                # If ping succeeds, that's wrong - networks should be isolated
+                if result.returncode == 0:
+                    assert False, "Kali should NOT be able to reach Ubuntu Target 2 directly - network isolation failed!"
+            except subprocess.CalledProcessError:
+                # This is expected - ping should fail due to network isolation
+                pass
+            print("    ✅ Kali → Ubuntu Target 2 (Internal): Properly isolated")
+            
+            # Test 3: Verify connectivity from Ubuntu Target 1 (dual-homed pivot)
+            print("  🔗 Testing connectivity from Ubuntu Target 1 (pivot point)...")
+            
+            # Target 1 should be able to reach Kali on DMZ network
+            result = self.lab_manager.run_command([
+                "docker", "exec", "ubuntu-target1-netconntest001", 
+                "ping", "-c", "2", "-W", "3", "10.100.1.10"
+            ])
+            assert result.returncode == 0, "Target1 should be able to ping Kali on DMZ"
+            print("    ✅ Ubuntu Target 1 → Kali (DMZ): Connected")
+            
+            # Target 1 should be able to reach Target 2 on internal network
+            result = self.lab_manager.run_command([
+                "docker", "exec", "ubuntu-target1-netconntest001", 
+                "ping", "-c", "2", "-W", "3", "192.168.100.12"
+            ])
+            assert result.returncode == 0, "Target1 should be able to ping Target2 on internal network"
+            print("    ✅ Ubuntu Target 1 → Ubuntu Target 2 (Internal): Connected")
+            
+            # Test 4: Verify connectivity from Ubuntu Target 2
+            print("  🔗 Testing connectivity from Ubuntu Target 2...")
+            
+            # Target 2 should be able to reach Target 1 on internal network
+            result = self.lab_manager.run_command([
+                "docker", "exec", "ubuntu-target2-netconntest001", 
+                "ping", "-c", "2", "-W", "3", "192.168.100.11"
+            ])
+            assert result.returncode == 0, "Target2 should be able to ping Target1 on internal network"
+            print("    ✅ Ubuntu Target 2 → Ubuntu Target 1 (Internal): Connected")
+            
+            # Target 2 should NOT be able to reach Kali directly (different network)
+            try:
+                result = self.lab_manager.run_command([
+                    "docker", "exec", "ubuntu-target2-netconntest001", 
+                    "ping", "-c", "2", "-W", "3", "10.100.1.10"
+                ])
+                # If ping succeeds, that's wrong - networks should be isolated
+                if result.returncode == 0:
+                    assert False, "Target2 should NOT be able to reach Kali directly - network isolation failed!"
+            except subprocess.CalledProcessError:
+                # This is expected - ping should fail due to network isolation
+                pass
+            print("    ✅ Ubuntu Target 2 → Kali (DMZ): Properly isolated")
+            
+            # Test 5: Verify routing tables show correct network segmentation
+            print("  🗺️  Verifying routing tables...")
+            
+            # Check Kali routing - should only know about DMZ network
+            result = self.lab_manager.run_command([
+                "docker", "exec", "kali-jump-netconntest001", 
+                "ip", "route", "show"
+            ])
+            kali_routes = result.stdout
+            assert "10.100.1.0/24" in kali_routes, "Kali should have route to DMZ network"
+            print("    ✅ Kali routing: DMZ network accessible")
+            
+            # Check Target1 routing - should know about both networks
+            result = self.lab_manager.run_command([
+                "docker", "exec", "ubuntu-target1-netconntest001", 
+                "ip", "route", "show"
+            ])
+            target1_routes = result.stdout
+            assert "10.100.1.0/24" in target1_routes, "Target1 should have route to DMZ network"
+            assert "192.168.100.0/24" in target1_routes, "Target1 should have route to Internal network"
+            print("    ✅ Ubuntu Target 1 routing: Both networks accessible (pivot capability)")
+            
+            # Check Target2 routing - should only know about internal network
+            result = self.lab_manager.run_command([
+                "docker", "exec", "ubuntu-target2-netconntest001", 
+                "ip", "route", "show"
+            ])
+            target2_routes = result.stdout
+            assert "192.168.100.0/24" in target2_routes, "Target2 should have route to Internal network"
+            print("    ✅ Ubuntu Target 2 routing: Internal network accessible")
+            
+            # Test 6: Test network discovery simulation (what students would do)
+            print("  🕵️  Testing network discovery simulation...")
+            
+            # From Kali: Discover DMZ network
+            try:
+                result = self.lab_manager.run_command([
+                    "docker", "exec", "kali-jump-netconntest001", 
+                    "bash", "-c", "for i in {10..15}; do ping -c 1 -W 1 10.100.1.$i > /dev/null 2>&1 && echo 'Host 10.100.1.'$i' is up'; done"
+                ])
+            except subprocess.CalledProcessError as e:
+                # Network discovery commands may return non-zero exit codes when some hosts are unreachable
+                # The important thing is that we get the expected output
+                result = e
+                result.stdout = e.stdout
+            assert "Host 10.100.1.11 is up" in result.stdout, "Should discover Ubuntu Target 1 on DMZ"
+            print("    ✅ DMZ network discovery: Ubuntu Target 1 discoverable from Kali")
+            
+            # Simulate what happens after compromising Target1 - discovery of internal network
+            try:
+                result = self.lab_manager.run_command([
+                    "docker", "exec", "ubuntu-target1-netconntest001", 
+                    "bash", "-c", "for i in {10..15}; do ping -c 1 -W 1 192.168.100.$i > /dev/null 2>&1 && echo 'Host 192.168.100.'$i' is up'; done"
+                ])
+            except subprocess.CalledProcessError as e:
+                # Network discovery commands may return non-zero exit codes when some hosts are unreachable
+                result = e
+                result.stdout = e.stdout
+            assert "Host 192.168.100.12 is up" in result.stdout, "Should discover Ubuntu Target 2 on Internal network"
+            print("    ✅ Internal network discovery: Ubuntu Target 2 discoverable from compromised Target 1")
+            
+            print("  🎉 All dual-network connectivity tests passed!")
+            print("     ✅ Network isolation working correctly")
+            print("     ✅ Ubuntu Target 1 can act as pivot between networks") 
+            print("     ✅ Simulated attack path validation successful")
+            
+        except Exception as e:
+            print(f"  ❌ Network connectivity test failed: {e}")
+            # Print debug information
+            print("  🐛 Debug information:")
+            for container_type in ["kali-jump", "ubuntu-target1", "ubuntu-target2"]:
+                container_name = f"{container_type}-netconntest001"
+                try:
+                    result = self.lab_manager.run_command([
+                        "docker", "exec", container_name, "ip", "addr", "show"
+                    ])
+                    print(f"    {container_name} interfaces:")
+                    print(f"      {result.stdout}")
+                except Exception as debug_e:
+                    print(f"    Failed to get debug info for {container_name}: {debug_e}")
+            raise
+        
+        finally:
+            # Cleanup
+            self.lab_manager.spin_down_class(csv_file, parallel=False)
 
 
 class TestStudentExec(TestDockerIntegration):

@@ -6,28 +6,42 @@ Infrastructure and automation for a multi‑host cybersecurity lab environment u
 
 ## 1. Overview
 
-The lab environment simulates a small internal network per student. Each student gets their own isolated network and a trio of containers (Kali jump box + Ubuntu targets). SSH access is exposed via a unique high port on the host.
+The lab environment simulates a segmented corporate network per student requiring lateral movement and pivoting techniques. Each student gets their own isolated dual-network environment with a trio of containers (Kali jump box + Ubuntu targets). The architecture forces students to compromise the dual-homed Ubuntu Target 1 to access Ubuntu Target 2 on the internal network. SSH access is exposed via a unique high port on the host.
 
 ### 1.1 Architecture
 ```
 External Network → Host: <assigned SSH port>
                        │
                        ▼
-               Kali Jump Box   (172.20.<subnet>.10)
+               Kali Jump Box        (10.<subnet>.1.10)
                      │
-       ┌───────────┴─────────── Internal / Per-Student Network (172.20.<subnet>.0/24)
-       │                       
-Ubuntu Target 1 (172.20.<subnet>.11)
-Ubuntu Target 2 (172.20.<subnet>.12)
+       ┌─────────────┴───────────── DMZ Network (10.<subnet>.1.0/24)
+       │                          │
+       │                          │
+Ubuntu Target 1 ─────────────────────┐
+(10.<subnet>.1.11)                   │
+       │                             │
+       │                             │ Dual-homed
+       └─────── Internal Network ────┤ (pivot point)
+                (192.168.<subnet>.0/24)
+                       │
+                Ubuntu Target 2 (192.168.<subnet>.12)
 ```
+
+**Network Segmentation:**
+- **DMZ Network** (`10.<subnet>.1.0/24`): Contains Kali Jump Box + Ubuntu Target 1
+- **Internal Network** (`192.168.<subnet>.0/24`): Contains Ubuntu Target 1 + Ubuntu Target 2
+- **Ubuntu Target 1** is dual-homed and serves as the pivot point between networks
+- **Ubuntu Target 2** is only accessible from the internal network (requires pivoting)
 
 ### 1.2 Key Concepts
 | Concept | Description |
 | ------- | ----------- |
 | Student ID | Unique identifier from the CSV (e.g. `student001`) used in naming & hashing. |
 | Assigned Port | Unique host SSH port (≥ 2222) mapped to the student's Kali container. |
-| Subnet ID | Deterministic (collision‑avoiding) value 1–254 used to derive `172.20.<subnet>.0/24`. |
+| Subnet ID | Deterministic (collision‑avoiding) value 1–254 used for both DMZ (`10.<subnet>.1.0/24`) and Internal (`192.168.<subnet>.0/24`) networks. |
 | Project Name | Docker Compose project prefix: `cyber-lab-<student_id>`. |
+| Pivoting | Students must compromise Ubuntu Target 1 to access Ubuntu Target 2 on the internal network. |
 | CSV | Single source of truth for roster + (after first run) assigned ports/subnets. |
 
 ---

@@ -1,12 +1,12 @@
 services:
-  # Kali Linux Jump Box - Externally accessible
+  # Kali Linux Jump Box
   kali-jump:
     build: ./kali-jump
     container_name: kali-jump-${STUDENT_ID:-test}
     hostname: kali-jump
     networks:
-      cyber-lab-network:
-        ipv4_address: 172.20.${SUBNET_ID:-0}.10
+      cyber-lab-dmz:
+        ipv4_address: 10.${SUBNET_ID:-0}.1.10
     ports:
       - "${SSH_PORT:-2222}:22"  # External SSH access
     cap_add:
@@ -24,14 +24,16 @@ services:
         hard: 4096
     restart: unless-stopped
 
-  # Ubuntu Target 1 - Internal only
+  # Ubuntu Target 1 - Dual-homed (DMZ + Internal networks)
   ubuntu-target1:
     build: ./ubuntu-target1
     container_name: ubuntu-target1-${STUDENT_ID:-test}
     hostname: ubuntu-target1
     networks:
-      cyber-lab-network:
-        ipv4_address: 172.20.${SUBNET_ID:-0}.11
+      cyber-lab-dmz:
+        ipv4_address: 10.${SUBNET_ID:-0}.1.11
+      cyber-lab-internal:
+        ipv4_address: 192.168.${SUBNET_ID:-0}.11
     labels:
       - "lab.student.id=${STUDENT_ID:-test}"
       - "lab.student.name=${STUDENT_NAME:-Test User}"
@@ -44,14 +46,14 @@ services:
         hard: 2048
     restart: unless-stopped
 
-  # Ubuntu Target 2 - Internal only
+  # Ubuntu Target 2 - Internal network only
   ubuntu-target2:
     build: ./ubuntu-target2
     container_name: ubuntu-target2-${STUDENT_ID:-test}
     hostname: ubuntu-target2
     networks:
-      cyber-lab-network:
-        ipv4_address: 172.20.${SUBNET_ID:-0}.12
+      cyber-lab-internal:
+        ipv4_address: 192.168.${SUBNET_ID:-0}.12
     labels:
       - "lab.student.id=${STUDENT_ID:-test}"
       - "lab.student.name=${STUDENT_NAME:-Test User}"
@@ -65,10 +67,20 @@ services:
     restart: unless-stopped
 
 networks:
-  cyber-lab-network:
-    name: ${NETWORK_NAME:-cyber-lab-test}
+  # DMZ Network - Kali Jump Box and Ubuntu Target 1
+  cyber-lab-dmz:
+    name: ${NETWORK_NAME:-cyber-lab-test}-dmz
     driver: bridge
     ipam:
       config:
-        - subnet: 172.20.${SUBNET_ID:-0}.0/24
-          gateway: 172.20.${SUBNET_ID:-0}.1
+        - subnet: 10.${SUBNET_ID:-0}.1.0/24
+          gateway: 10.${SUBNET_ID:-0}.1.1
+  
+  # Internal Network - Ubuntu Target 1 and Ubuntu Target 2
+  cyber-lab-internal:
+    name: ${NETWORK_NAME:-cyber-lab-test}-internal
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.${SUBNET_ID:-0}.0/24
+          gateway: 192.168.${SUBNET_ID:-0}.1
