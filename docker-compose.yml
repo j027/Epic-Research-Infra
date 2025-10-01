@@ -15,13 +15,6 @@ services:
       - "lab.student.id=${STUDENT_ID:-test}"
       - "lab.student.name=${STUDENT_NAME:-Test User}"
       - "lab.student.port=${SSH_PORT:-2222}"
-      
-    # fork bomb protection
-    pids_limit: 4096
-    ulimits:
-      nproc:
-        soft: 2048
-        hard: 4096
     restart: unless-stopped
 
   # Ubuntu Target 1 - Dual-homed (DMZ + Internal networks)
@@ -40,13 +33,6 @@ services:
     labels:
       - "lab.student.id=${STUDENT_ID:-test}"
       - "lab.student.name=${STUDENT_NAME:-Test User}"
-
-    # fork bomb protection
-    pids_limit: 2048
-    ulimits:
-      nproc:
-        soft: 1024
-        hard: 2048
     restart: unless-stopped
 
   # Ubuntu Target 2 - Internal network only
@@ -60,13 +46,6 @@ services:
     labels:
       - "lab.student.id=${STUDENT_ID:-test}"
       - "lab.student.name=${STUDENT_NAME:-Test User}"
-
-    # fork bomb protection
-    pids_limit: 2048
-    ulimits:
-      nproc:
-        soft: 1024
-        hard: 2048
     restart: unless-stopped
 
 networks:

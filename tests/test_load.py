@@ -21,7 +21,7 @@ import string
 import tempfile
 import csv
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Any
 import paramiko
 from paramiko.ssh_exception import SSHException, AuthenticationException
 
@@ -292,7 +292,10 @@ class StudentSimulator:
                 cmd_output = ""
                 cmd_start = time.time()
                 
-                while time.time() - cmd_start < 30:  # 30 second timeout per command
+                # Longer timeout for 'run' command since it's resource-intensive under load
+                timeout = 90 if cmd == "run" else 30
+                
+                while time.time() - cmd_start < timeout:
                     try:
                         data = channel.recv(1024).decode('utf-8', errors='ignore')
                         cmd_output += data
@@ -812,6 +815,17 @@ class TestLoadTesting:
         else:
             return subprocess.run(command, shell=True, capture_output=True, text=True)
         
+    @pytest.mark.integration
+    def test_single_student_baseline(self):
+        """Test single student performance to establish baseline"""
+        self._run_load_test(1)
+        
+    @pytest.mark.slow
+    @pytest.mark.integration
+    def test_high_load_stress(self):
+        """Test high load (40 students)"""
+        self._run_load_test(40)
+        
     @pytest.mark.parametrize("num_students", [2, 3, 5])
     def test_load_with_students(self, num_students):
         """Test load with different numbers of students"""
@@ -837,7 +851,7 @@ class TestLoadTesting:
             # Step 1: Spin up all student environments
             print(f"📚 Provisioning {num_students} student environments...")
             
-            success = self.lab_manager.spin_up_class(csv_path, parallel=False)
+            success = self.lab_manager.spin_up_class(csv_path, parallel=True)
             assert success, f"Failed to provision students"
             
             # Read updated CSV to get assigned ports
@@ -890,7 +904,7 @@ class TestLoadTesting:
             # Step 4: Always clean up containers, even on interruption
             try:
                 print("🧹 Cleaning up test environments...")
-                self.lab_manager.spin_down_class(csv_path, parallel=False)
+                self.lab_manager.spin_down_class(csv_path, parallel=True)
             except Exception as cleanup_error:
                 print(f"⚠️  Warning: Cleanup failed: {cleanup_error}")
                 print("   Some containers may still be running. Use 'docker ps' to check.")
