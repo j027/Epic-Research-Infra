@@ -16,6 +16,10 @@ RUN apt-get update && apt-get install -y \
     vim \
     openssh-server
 
+# Unzip the rockyou wordlist for immediate availability
+# this way students don't have to do it themselves
+RUN gunzip /usr/share/wordlists/rockyou.txt.gz
+
 # Create a user for SSH access (only if they don't exist)
 RUN id student >/dev/null 2>&1 || (useradd -m -s /bin/bash student && \
     echo 'student:student123' | chpasswd && \

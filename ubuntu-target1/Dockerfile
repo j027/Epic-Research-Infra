@@ -6,7 +6,7 @@ FROM heywoodlh/vulnerable@sha256:a608b548838c2bb947d62ee9e9a97bd7ef966c8ab0e27cb
 RUN userdel -r vuln
 
 # Install zip utility for flag creation
-RUN apt-get update && apt-get install -y zip && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y zip sshpass && rm -rf /var/lib/apt/lists/*
 
 ##ProFTPD
 EXPOSE 21

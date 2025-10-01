@@ -262,6 +262,17 @@ Or without activation:
 .venv/bin/python -m pytest -v
 ```
 
+#### 9.3.1 When Changing Dockerfiles
+If you modify any Dockerfiles, you may need to clear any old images with the following commands:
+```bash
+sudo docker system prune -a
+sudo docker builder prune -a
+```
+> Warning: This will remove all unused images, not just those related to this project.
+
+If you do not do this, the old images may be cached when running tests.
+This is primarily needed during **development** when you are changing the Dockerfiles.
+
 ### 9.4 Parallel vs Sequential Operations
 Some operations (e.g. class up/down) can run in parallel. The tool will prompt for confirmation before parallel execution. If output interleaving is confusing or the host is resource‑constrained, re-run with sequential mode:
 ```bash
