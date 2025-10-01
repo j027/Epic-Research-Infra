@@ -117,7 +117,7 @@ FLAG_LOCATION=/var/log/flag.zip
 
 > Students will need to crack the ZIP_PASSWORD to access the FLAG_CONTENT in Ubuntu Target 1.
 > The password must be in the wordlist they use for cracking.
-> The flag content can have spaces if it is enclosed in quotes.
+> The flag content, zip password, and flag location can have spaces if they are enclosed in quotes.
 
 ### 4.3 Build Images (first time ~5 min)
 ```bash
@@ -219,9 +219,6 @@ Container types: `kali`, `ubuntu1`, `ubuntu2`.
 
 ### 9.1 Quick Compose Test
 ```bash
-sudo docker compose build --env-file flags.env
-# or, if you don't want to use flags.env:
-# this will use default flag values
 sudo docker compose build
 sudo docker compose up -d
 ```

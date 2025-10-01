@@ -437,10 +437,6 @@ class LabManager:
                 "-f", self.compose_file
             ]
             
-            # Add flags.env if it exists
-            if os.path.exists("flags.env"):
-                command.extend(["--env-file", "flags.env"])
-                
             command.extend([
                 "-p", f"cyber-lab-{student_id}",  # Project name for isolation
                 "up", "-d"

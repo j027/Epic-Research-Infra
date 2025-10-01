@@ -32,10 +32,6 @@ services:
     env_file:
       - path: flags.env
         required: false
-    environment:
-      - FLAG_CONTENT=${FLAG_CONTENT:-f4k3_fl4g_f0r_t3st1ng}
-      - ZIP_PASSWORD=${ZIP_PASSWORD:-maggie}
-      - FLAG_LOCATION=${FLAG_LOCATION:-/var/log/asdfgnarlyzxcv.zip}
     networks:
       cyber-lab-dmz:
         ipv4_address: 10.${SUBNET_ID:-0}.1.11
