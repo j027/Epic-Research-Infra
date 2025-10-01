@@ -200,14 +200,34 @@ password: student123
 | Need clean slate | Stop everything, remove networks: `docker network prune` (⚠️ affects other networks—review first). |
 | Missing flags.env file | Copy `flags.env.example` to `flags.env` and customize flag content before building. |
 | Default flags appear | Check that `flags.env` exists and containers were rebuilt after creating it. |
+| SSH host key changed | Image rebuild + container recreation generates new SSH keys (mainly during development). Remove old key: `ssh-keygen -R '[localhost]:2222'` (replace with actual host/port). |
 
-### 8.1 Recreate a Single Student (Destructive)
+### 8.1 SSH Host Key Changed Error
+When containers are recreated **after the base image has been rebuilt**, new SSH host keys are generated. This typically happens during development when images are rebuilt, but is uncommon in normal operation. SSH clients will display a security warning:
+
+```
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!
+Someone could be eavesdropping on you right now (man-in-the-middle attack)!
+It is also possible that a host key has just been changed.
+Host key verification failed.
+```
+
+**Fix:** Remove the old host key from your known_hosts file:
+```bash
+ssh-keygen -R '[localhost]:2222'
+```
+Replace `localhost:2222` with the actual host and port for the student's container.
+
+### 8.2 Recreate a Single Student (Destructive)
 ```bash
 ./lab_manager.py student recreate <student_id> students.csv
 ```
 > ⚠️ Removes that student's runtime changes.
 
-### 8.2 Exec Into Containers
+### 8.3 Exec Into Containers
 ```bash
 ./lab_manager.py student exec <student_id> --container kali
 ```
