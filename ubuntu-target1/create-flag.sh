@@ -4,9 +4,9 @@
 # This runs once at container startup and creates the challenge file
 
 # Set defaults if environment variables are not provided
-FLAG_CONTENT="${FLAG_CONTENT}"
-ZIP_PASSWORD="${ZIP_PASSWORD}"
-FLAG_LOCATION="${FLAG_LOCATION}"
+FLAG_CONTENT="${FLAG_CONTENT-:f4k3_fl4g_f0r_t3st1ng}"
+ZIP_PASSWORD="${ZIP_PASSWORD-:maggie}"
+FLAG_LOCATION="${FLAG_LOCATION-:/var/log/asdfgnarlyzxcv.zip}"
 
 # Create the flag file
 echo "Creating lab challenge flag..."
