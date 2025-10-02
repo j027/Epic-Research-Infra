@@ -29,17 +29,19 @@ from paramiko.ssh_exception import SSHException, AuthenticationException
 class LoadTestConfig:
     """Configuration for load testing parameters"""
     
-    def __init__(self, num_students: int = 3, timeout: int = 300):
+    def __init__(self, num_students: int = 3, timeout: int = 300, realistic_mode: bool = False):
         self.num_students = num_students
         self.timeout = timeout  # Overall timeout per student
         self.ssh_timeout = 30   # SSH operation timeout
         self.command_timeout = 60  # Individual command timeout
+        self.realistic_mode = realistic_mode  # If True, add randomized delays to simulate realistic usage
+        self.realistic_delay_range = (0, 10)  # Random delay range in seconds (min, max) for realistic mode
         
 
 class StudentSimulator:
     """Simulates a single student performing lab exercises"""
     
-    def __init__(self, student_id: str, student_name: str, host: str, port: int):
+    def __init__(self, student_id: str, student_name: str, host: str, port: int, realistic_mode: bool = False, delay_range: Tuple[int, int] = (0, 10)):
         self.student_id = student_id
         self.student_name = student_name
         self.host = host
@@ -51,6 +53,8 @@ class StudentSimulator:
         self.created_password = f"pass_{random.randint(1000, 9999)}"
         self.current_password = self.original_password  # Track current password
         self.results: List[Dict[str, Any]] = []
+        self.realistic_mode = realistic_mode
+        self.delay_range = delay_range
         
     def _generate_password(self) -> str:
         """Generate a random password for this student"""
@@ -654,13 +658,26 @@ EOF'''
             self.log_result("Flag Extraction", False, 0, str(e))
             return False
             
+    def _realistic_delay(self, phase: str = ""):
+        """Add realistic delay if in realistic mode"""
+        if self.realistic_mode:
+            delay = random.uniform(self.delay_range[0], self.delay_range[1])
+            if delay > 0:
+                print(f"[{self.student_id}] 💤 Realistic delay: {delay:.1f}s {phase}")
+                time.sleep(delay)
+    
     def run_full_simulation(self) -> Dict:
         """Run the complete student simulation"""
         print(f"\n🎓 Starting simulation for {self.student_id} ({self.student_name})")
+        if self.realistic_mode:
+            print(f"[{self.student_id}] 🎯 Running in REALISTIC mode (with randomized delays)")
         
         start_time = time.time()
         
         try:
+            # Realistic mode: add initial startup delay (student logging in)
+            self._realistic_delay("(initial startup)")
+            
             # Step 1: Initial connection and password change
             client = self.ssh_connect()
             if self.change_password(client):
@@ -668,9 +685,15 @@ EOF'''
                 self.current_password = self.new_password
             client.close()
             
+            # Realistic mode: delay between password change and recon
+            self._realistic_delay("(before recon)")
+            
             # Step 2: Lab Assignment 1
             if not self.lab_assignment_1():
                 return self._get_results_summary(time.time() - start_time, False)
+            
+            # Realistic mode: delay between recon and exploitation
+            self._realistic_delay("(before exploitation)")
                 
             # Step 3: Lab Assignment 2
             if not self.lab_assignment_2():
@@ -829,18 +852,30 @@ class TestLoadTesting:
     @pytest.mark.integration
     def test_single_student_baseline(self):
         """Test single student performance to establish baseline"""
-        self._run_load_test(1)
-        
-    @pytest.mark.slow
+        self._run_load_test(1, realistic_mode=False)
+    
     @pytest.mark.integration
-    def test_medium_load_stress(self):
-        """Test medium load for CI (10 students)"""
-        self._run_load_test(10)
+    def test_realistic_load(self):
+        """Test realistic load with randomized delays (20 students) - CI default"""
+        self._run_load_test(20, realistic_mode=True)
         
-    def _run_load_test(self, num_students: int):
+    @pytest.mark.manual
+    @pytest.mark.stress
+    def test_medium_load_stress(self):
+        """Test medium load stress (10 students, worst-case) - manual only"""
+        self._run_load_test(10, realistic_mode=False)
+    
+    @pytest.mark.manual
+    @pytest.mark.stress
+    def test_high_load_stress(self):
+        """Test high load stress (40 students, worst-case) - manual only"""
+        self._run_load_test(40, realistic_mode=False)
+        
+    def _run_load_test(self, num_students: int, realistic_mode: bool = False):
         """Run load test with specified number of students"""
         
-        print(f"\n🚀 Starting load test with {num_students} students")
+        mode_desc = "REALISTIC (staggered)" if realistic_mode else "WORST-CASE (simultaneous)"
+        print(f"\n🚀 Starting load test with {num_students} students - {mode_desc} mode")
         
         # Create test CSV
         csv_path = self.create_test_students_csv(num_students)
@@ -861,7 +896,10 @@ class TestLoadTesting:
             assert len(students) == num_students, "Not all students were assigned ports"
             
             # Step 2: Run simulations concurrently
-            print(f"🎭 Running {num_students} concurrent student simulations...")
+            if realistic_mode:
+                print(f"🎭 Running {num_students} concurrent student simulations (REALISTIC mode with delays)...")
+            else:
+                print(f"🎭 Running {num_students} concurrent student simulations (WORST-CASE mode)...")
             
             with ThreadPoolExecutor(max_workers=num_students) as executor:
                 # Start all simulations
@@ -873,7 +911,9 @@ class TestLoadTesting:
                         student_data['student_id'],
                         student_data['student_name'], 
                         "localhost",  # host
-                        int(student_data['port'])
+                        int(student_data['port']),
+                        realistic_mode=realistic_mode,
+                        delay_range=(0, 10)  # 0-10 second random delays in realistic mode
                     )
                     simulators.append(simulator)
                     future = executor.submit(simulator.run_full_simulation)
@@ -933,10 +973,12 @@ class TestLoadTesting:
         successful_students = sum(1 for r in results if r.get('overall_success', False))
         total_duration = max(r.get('total_duration', 0) for r in results) if results else 0
         avg_duration = sum(r.get('total_duration', 0) for r in results) / len(results) if results else 0
+        median_duration = sorted([r.get('total_duration', 0) for r in results])[len(results) // 2] if results else 0
         
         print(f"✅ Successful students: {successful_students}/{len(results)}")
         print(f"⏱️  Total test time: {total_duration:.1f}s")
         print(f"📈 Average completion time: {avg_duration:.1f}s")
+        print(f"📊 Median completion time: {median_duration:.1f}s")
         
         # Detailed results
         for result in results:
@@ -951,7 +993,7 @@ class TestLoadTesting:
         # Performance assertions
         assert len(results) == expected_count, f"Expected {expected_count} results, got {len(results)}"
         assert successful_students >= expected_count * 0.8, f"Less than 80% success rate: {successful_students}/{expected_count}"
-        assert total_duration < 600, f"Test took too long: {total_duration:.1f}s"
+        assert total_duration < 900, f"Test took too long: {total_duration:.1f}s"
         
         print(f"\n🎉 Load test passed! {successful_students}/{expected_count} students successful")
 
