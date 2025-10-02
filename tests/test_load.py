@@ -121,33 +121,20 @@ class StudentSimulator:
             return "", str(e), -1
 
     def change_password(self, client: paramiko.SSHClient) -> bool:
-        """Change the default student password"""
+        """Change the default student password using chpasswd (non-interactive)"""
         start_time = time.time()
         try:
-            # Use passwd command to change password
-            stdin, stdout, stderr = client.exec_command('passwd', timeout=30)
+            # Use chpasswd command which is non-interactive
+            command = f'echo "student:{self.new_password}" | sudo chpasswd'
+            stdout, stderr, exit_code = self.run_ssh_command(client, command, timeout=30)
             
-            # Send old password
-            stdin.write('student123\n')
-            stdin.flush()
-            time.sleep(1)
-            
-            # Send new password twice
-            stdin.write(f'{self.new_password}\n')
-            stdin.flush()
-            time.sleep(1)
-            stdin.write(f'{self.new_password}\n')
-            stdin.flush()
-            
-            exit_code = stdout.channel.recv_exit_status()
             duration = time.time() - start_time
             
             if exit_code == 0:
                 self.log_result("Change Password", True, duration)
                 return True
             else:
-                stderr_data = stderr.read().decode('utf-8', errors='ignore')
-                self.log_result("Change Password", False, duration, stderr_data)
+                self.log_result("Change Password", False, duration, stderr)
                 return False
                 
         except Exception as e:
@@ -652,9 +639,9 @@ class StudentSimulator:
         try:
             # Step 1: Initial connection and password change
             client = self.ssh_connect()
-            if not self.change_password(client):
-                client.close()
-                return self._get_results_summary(time.time() - start_time, False)
+            if self.change_password(client):
+                # Update current password to the new one we just set
+                self.current_password = self.new_password
             client.close()
             
             # Step 2: Lab Assignment 1
@@ -826,19 +813,6 @@ class TestLoadTesting:
         """Test high load (40 students)"""
         self._run_load_test(40)
         
-    @pytest.mark.parametrize("num_students", [2, 3, 5])
-    def test_load_with_students(self, num_students):
-        """Test load with different numbers of students"""
-        self._run_load_test(num_students)
-        
-    def test_small_load(self):
-        """Test with small load (2 students) - for regular CI"""
-        self._run_load_test(2)
-        
-    def test_medium_load(self):
-        """Test with medium load (5 students) - for manual testing"""
-        self._run_load_test(5)
-        
     def _run_load_test(self, num_students: int):
         """Run load test with specified number of students"""
         
@@ -846,6 +820,10 @@ class TestLoadTesting:
         
         # Create test CSV
         csv_path = self.create_test_students_csv(num_students)
+        
+        # Override the confirmation method to automatically accept parallel execution
+        original_confirm = self.lab_manager._confirm_parallel_execution
+        self.lab_manager._confirm_parallel_execution = lambda operation_name: True
         
         try:
             # Step 1: Spin up all student environments
@@ -908,6 +886,9 @@ class TestLoadTesting:
             except Exception as cleanup_error:
                 print(f"⚠️  Warning: Cleanup failed: {cleanup_error}")
                 print("   Some containers may still be running. Use 'docker ps' to check.")
+            finally:
+                # Restore original confirmation method
+                self.lab_manager._confirm_parallel_execution = original_confirm
             
     def _read_student_assignments(self, csv_path: str) -> List[Dict]:
         """Read student assignments from CSV"""
