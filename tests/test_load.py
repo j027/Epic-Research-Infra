@@ -298,7 +298,7 @@ EOF'''
                 cmd_start = time.time()
                 
                 # Longer timeout for 'run' command since it's resource-intensive under load
-                timeout = 90 if cmd == "run" else 30
+                timeout = 150 if cmd == "run" else 30
                 
                 while time.time() - cmd_start < timeout:
                     try:
