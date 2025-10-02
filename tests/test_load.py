@@ -479,13 +479,14 @@ class StudentSimulator:
             if raw_output:
                 # Remove any surrounding quotes and split by lines
                 cleaned_output = raw_output.strip("'\"")
-                gnarly_files = [f.strip().strip("'\"") for f in cleaned_output.split('\n') if f.strip()]
+                lines = cleaned_output.split('\n')
+                gnarly_files = [str(f).strip().strip("'\"") for f in lines if str(f).strip()]
                 gnarly_files = [f for f in gnarly_files if f]  # Remove empty strings
                 
                 print(f"[{self.student_id}] Parsed gnarly files: {gnarly_files}")
                 
                 if gnarly_files:
-                    gnarly_file = gnarly_files[0]  # Take first found file
+                    gnarly_file: str = str(gnarly_files[0])  # Take first found file
                     print(f"[{self.student_id}] Using gnarly file: {gnarly_file}")
                     self.log_result("File Discovery", True, duration)
                     
@@ -510,7 +511,9 @@ class StudentSimulator:
             start_time = time.time()
             
             # Create local filename for the copied file (use simple filename in home dir)
-            local_filename = f"~/{gnarly_file.split('/')[-1]}"
+            path_parts = str(gnarly_file).split('/')
+            filename = str(path_parts[-1]) if path_parts else "gnarly.zip"
+            local_filename = f"~/{filename}"
             
             print(f"[{self.student_id}] Copying {gnarly_file} to {local_filename} on kali-jump...")
             
@@ -527,13 +530,15 @@ class StudentSimulator:
                 self.log_result("File Copy (SCP)", True, duration)
                 
                 # Verify the file was created on kali-jump
+                path_parts = str(gnarly_file).split('/')
+                filename = str(path_parts[-1]) if path_parts else "gnarly.zip"
                 verify_stdout, verify_stderr, verify_exit = self.run_ssh_command(
-                    kali_client, f"ls -la ~/{gnarly_file.split('/')[-1]}", timeout=10
+                    kali_client, f"ls -la ~/{filename}", timeout=10
                 )
                 print(f"[{self.student_id}] Copied file verification: {verify_stdout.strip()}")
                 
                 # Extract flag from the copied file  
-                copied_file_path = f"/home/student/{gnarly_file.split('/')[-1]}"
+                copied_file_path = f"/home/student/{filename}"
                 return self._extract_flag_simulation(kali_client, copied_file_path)
             else:
                 duration = time.time() - start_time
@@ -584,14 +589,15 @@ class StudentSimulator:
                     )
                     
                     # Extract the password from john output (format: filename:password:...)
-                    password_line = stdout.strip().split('\n')[0] if stdout.strip() else ""
+                    lines = str(stdout.strip()).split('\n')
+                    password_line = str(lines[0]) if lines else ""
                     cracked_password = None
                     if ":" in password_line and "password hash cracked" in stdout:
                         # John output format: filename:password:additional_fields...
                         # Split and take the second field (index 1) which is the password
-                        parts = password_line.split(":")
+                        parts = str(password_line).split(":")
                         if len(parts) >= 2:
-                            cracked_password = parts[1]
+                            cracked_password = str(parts[1])
                             print(f"[{self.student_id}] 🔓 Password cracked: {cracked_password}")
                     
                     if cracked_password:
@@ -943,7 +949,7 @@ if __name__ == "__main__":
     import sys
     
     if len(sys.argv) > 1:
-        num_students = int(sys.argv[1])
+        num_students = int(str(sys.argv[1]))
     else:
         num_students = 3
         

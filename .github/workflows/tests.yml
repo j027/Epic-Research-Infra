@@ -58,7 +58,7 @@ jobs:
     - name: Run tests
       run: |
         source venv/bin/activate
-        pytest -v --tb=short
+        pytest -v -s --tb=auto --capture=no
 
     - name: Cleanup Docker containers
       if: always()
