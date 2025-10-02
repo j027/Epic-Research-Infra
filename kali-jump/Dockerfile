@@ -14,7 +14,8 @@ RUN apt-get update && apt-get install -y \
     wordlists \
     nano \
     vim \
-    openssh-server
+    openssh-server \
+    expect
 
 # Unzip the rockyou wordlist for immediate availability
 # this way students don't have to do it themselves

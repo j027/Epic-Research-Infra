@@ -121,24 +121,36 @@ class StudentSimulator:
             return "", str(e), -1
 
     def change_password(self, client: paramiko.SSHClient) -> bool:
-        """Change the default student password using printf with passwd (non-interactive)"""
+        """Change the default student password using expect to automate passwd (non-interactive)"""
         start_time = time.time()
         try:
-            print(f"[{self.student_id}] Changing password using printf method...")
+            print(f"[{self.student_id}] Changing password using expect + passwd...")
             
-            # Use printf to handle the password prompts - this is the only method that works reliably
-            command = f'printf "{self.current_password}\\n{self.new_password}\\n{self.new_password}\\n" | passwd'
+            # Use expect to automate the interactive passwd command
+            # This properly handles TTY requirements without needing sudo privileges
+            command = f'''expect << 'EOF'
+spawn passwd
+expect "(current) UNIX password:"
+send "{self.current_password}\\r"
+expect "New password:"
+send "{self.new_password}\\r"
+expect "Retype new password:"
+send "{self.new_password}\\r"
+expect eof
+EOF'''
             stdout, stderr, exit_code = self.run_ssh_command(client, command, timeout=30)
             
             duration = time.time() - start_time
             
-            if exit_code == 0:
+            # Check for success indicators in output
+            if exit_code == 0 and ("successfully" in stdout.lower() or "updated successfully" in stdout.lower()):
                 self.log_result("Change Password", True, duration)
+                self.current_password = self.new_password  # Update tracked password
                 return True
             else:
                 # If password change fails, just log and continue with original password
                 self.log_result("Change Password", False, duration, 
-                              f"Password change failed but continuing with original password. Error: {stderr}")
+                              f"Password change failed but continuing with original password. Exit: {exit_code}, Output: {stdout}")
                 print(f"[{self.student_id}] ⚠️ Password change failed, continuing with original password...")
                 return True  # Return True to continue with original password for load testing
                 
