@@ -439,7 +439,7 @@ class LabManager:
             
             command.extend([
                 "-p", f"cyber-lab-{student_id}",  # Project name for isolation
-                "up", "-d"
+                "up", "-d", "--no-build"  # Use pre-built images, don't rebuild per student
             ])
             
             self.run_command(command, env=env, capture_output=False)
