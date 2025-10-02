@@ -262,6 +262,28 @@ Or without activation:
 .venv/bin/python -m pytest -v
 ```
 
+#### 9.3.2 Capacity Testing (Optional)
+An optional capacity testing tool is available to determine the maximum number of concurrent students your system can handle. This uses binary search to efficiently find the breaking point.
+
+**WARNING:** This test can take 30+ minutes and will heavily stress your system. Only run on hardware that matches your production environment.
+
+```bash
+pytest tests/test_capacity.py -v -s -m capacity
+```
+
+**What it does:**
+- Uses binary search to find maximum student capacity
+- Requires 100% success rate (worst-case scenario)
+- Treats timeouts as failures (our timeouts are already generous)
+- Allows performance degradation as long as all students succeed
+- Provides detailed report with recommendations
+
+**When to use:**
+- Before deploying to production to validate hardware
+- After infrastructure changes to verify capacity
+- When planning for class size increases
+- To establish safe operating limits
+
 #### 9.3.1 When Changing Dockerfiles
 If you modify any Dockerfiles, you may need to clear any old images with the following commands:
 ```bash
