@@ -21,6 +21,7 @@ services:
   # Ubuntu Target 1 - Dual-homed (DMZ + Internal networks)
   ubuntu-target1:
     image: epic-research-infra-ubuntu-target1:latest
+    stop_grace_period: 1s
     build: ./ubuntu-target1
     container_name: ubuntu-target1-${STUDENT_ID:-test}
     hostname: ubuntu-target1
