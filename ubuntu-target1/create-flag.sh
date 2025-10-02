@@ -20,10 +20,14 @@ rm -f /tmp/flag.txt
 
 echo "Flag challenge created at: $FLAG_LOCATION"
 
-# Clear environment variables for security
-unset FLAG_CONTENT
-unset ZIP_PASSWORD
-unset FLAG_LOCATION
-
+# Clear environment variables for security (overwrite then unset)
+FLAG_CONTENT=""
+ZIP_PASSWORD=""
+FLAG_LOCATION=""
+unset FLAG_CONTENT ZIP_PASSWORD FLAG_LOCATION
 # Delete self to prevent students from finding the script
 rm -f "$0"
+
+# Hand off to supervisord as the main process so this script is the entrypoint
+echo "Starting supervisord..."
+exec /usr/bin/supervisord -n

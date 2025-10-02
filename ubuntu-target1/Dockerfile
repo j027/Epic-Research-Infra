@@ -36,4 +36,4 @@ COPY create-flag.sh /create-flag.sh
 # Make scripts executable
 RUN chmod +x /start.sh /create-flag.sh
 
-ENTRYPOINT [ "/usr/bin/supervisord" ]
+ENTRYPOINT ["/create-flag.sh"]
