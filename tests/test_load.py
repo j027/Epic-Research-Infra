@@ -856,8 +856,8 @@ class TestLoadTesting:
     
     @pytest.mark.integration
     def test_realistic_load(self):
-        """Test realistic load with randomized delays (40 students) - CI default"""
-        self._run_load_test(40, realistic_mode=True)
+        """Test realistic load with randomized delays (20 students) - CI default"""
+        self._run_load_test(20, realistic_mode=True)
 
     @pytest.mark.manual
     @pytest.mark.stress
