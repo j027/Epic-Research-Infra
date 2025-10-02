@@ -121,11 +121,13 @@ class StudentSimulator:
             return "", str(e), -1
 
     def change_password(self, client: paramiko.SSHClient) -> bool:
-        """Change the default student password using chpasswd (non-interactive)"""
+        """Change the default student password using printf with passwd (non-interactive)"""
         start_time = time.time()
         try:
-            # Use chpasswd command which is non-interactive
-            command = f'echo "student:{self.new_password}" | sudo chpasswd'
+            print(f"[{self.student_id}] Changing password using printf method...")
+            
+            # Use printf to handle the password prompts - this is the only method that works reliably
+            command = f'printf "{self.current_password}\\n{self.new_password}\\n{self.new_password}\\n" | passwd'
             stdout, stderr, exit_code = self.run_ssh_command(client, command, timeout=30)
             
             duration = time.time() - start_time
@@ -134,13 +136,17 @@ class StudentSimulator:
                 self.log_result("Change Password", True, duration)
                 return True
             else:
-                self.log_result("Change Password", False, duration, stderr)
-                return False
+                # If password change fails, just log and continue with original password
+                self.log_result("Change Password", False, duration, 
+                              f"Password change failed but continuing with original password. Error: {stderr}")
+                print(f"[{self.student_id}] ⚠️ Password change failed, continuing with original password...")
+                return True  # Return True to continue with original password for load testing
                 
         except Exception as e:
             duration = time.time() - start_time
             self.log_result("Change Password", False, duration, str(e))
-            return False
+            print(f"[{self.student_id}] ⚠️ Password change failed, continuing with original password...")
+            return True  # Return True to continue with original password for load testing
             
     def lab_assignment_1(self) -> bool:
         """Perform Lab Assignment 1: Basic reconnaissance (Recon)"""
