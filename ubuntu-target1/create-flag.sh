@@ -13,7 +13,7 @@ echo "Creating lab challenge flag..."
 echo "$FLAG_CONTENT" > /tmp/flag.txt
 
 # Create password-protected zip file
-zip -P "$ZIP_PASSWORD" "$FLAG_LOCATION" /tmp/flag.txt
+zip -j -P "$ZIP_PASSWORD" "$FLAG_LOCATION" /tmp/flag.txt
 
 # Clean up temporary files (remove traces)
 rm -f /tmp/flag.txt

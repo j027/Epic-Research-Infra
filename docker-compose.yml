@@ -1,6 +1,7 @@
 services:
   # Kali Linux Jump Box
   kali-jump:
+    image: epic-research-infra-kali-jump:latest
     build: ./kali-jump
     container_name: kali-jump-${STUDENT_ID:-test}
     hostname: kali-jump
@@ -19,6 +20,7 @@ services:
 
   # Ubuntu Target 1 - Dual-homed (DMZ + Internal networks)
   ubuntu-target1:
+    image: epic-research-infra-ubuntu-target1:latest
     build: ./ubuntu-target1
     container_name: ubuntu-target1-${STUDENT_ID:-test}
     hostname: ubuntu-target1
@@ -37,6 +39,7 @@ services:
 
   # Ubuntu Target 2 - Internal network only
   ubuntu-target2:
+    image: epic-research-infra-ubuntu-target2:latest
     build: ./ubuntu-target2
     container_name: ubuntu-target2-${STUDENT_ID:-test}
     hostname: ubuntu-target2

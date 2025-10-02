@@ -361,7 +361,7 @@ class StudentSimulator:
                         channel.send((self.created_password + "\n").encode('utf-8'))
                         time.sleep(2)
                     else:
-                        time.sleep(2)
+                        time.sleep(0.25)
                     
                     # Collect output
                     try:
