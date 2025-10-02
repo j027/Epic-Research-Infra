@@ -32,7 +32,7 @@ from typing import List, Dict, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Import from test_load to reuse StudentSimulator
-from test_load import StudentSimulator
+from tests.test_load import StudentSimulator
 
 
 class CapacityTestConfig:

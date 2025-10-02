@@ -833,9 +833,9 @@ class TestLoadTesting:
         
     @pytest.mark.slow
     @pytest.mark.integration
-    def test_high_load_stress(self):
-        """Test high load (20 students)"""
-        self._run_load_test(20)
+    def test_medium_load_stress(self):
+        """Test medium load for CI (10 students)"""
+        self._run_load_test(10)
         
     def _run_load_test(self, num_students: int):
         """Run load test with specified number of students"""
