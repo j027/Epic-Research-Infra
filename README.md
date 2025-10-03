@@ -57,13 +57,36 @@ Install on a Linux host with Docker:
 ### 2.1 Install Docker
 Follow the official docs: https://docs.docker.com/engine/install/
 
+For Ubuntu, a quick summary:
+```bash
+# Add Docker's official GPG key:
+sudo apt-get update
+sudo apt-get install ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+# Add the repository to Apt sources:
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+```
+```bash
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+ ```
+
 ### 2.2 Install Python 3 (if needed)
+Python 3 is usually pre-installed on Ubuntu, but it doesn't hurt to ensure it's present:
 ```bash
 sudo apt update
-sudo apt install -y python3 python3-pip
+sudo apt install -y python3 python3-pip python3-venv
 ```
 
-> Tip: Use a virtual environment for development & testing (`python3 -m venv .venv`).
+> **Note:** If using a different Linux distribution, use the appropriate package manager (e.g., `dnf`, `yum`, `pacman`, `zypper`).
+
+> **Tip:** Use a virtual environment for development & testing (`python3 -m venv .venv`).
 
 ---
 
