@@ -49,12 +49,22 @@ Ubuntu Target 1 ─────────────────────�
 ## 2. Requirements
 
 Install on a Linux host with Docker:
+* Git
 * Docker
 * Docker Compose (plugin or standalone)
 * Python 3 (>=3.10 recommended)
 * Sufficient system resources (CPU, RAM, disk) for number of concurrent students
 
-### 2.1 Install Docker
+### 2.1 Install Git
+Git is usually pre-installed on most Linux distributions, but ensure it's present:
+```bash
+sudo apt update
+sudo apt install -y git
+```
+
+> **Note:** If using a different Linux distribution, use the appropriate package manager (e.g., `dnf`, `yum`, `pacman`, `zypper`).
+
+### 2.2 Install Docker
 Follow the official docs: https://docs.docker.com/engine/install/
 
 For Ubuntu, a quick summary:
@@ -77,7 +87,7 @@ sudo apt-get update
 sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
  ```
 
-### 2.2 Install Python 3 (if needed)
+### 2.3 Install Python 3 (if needed)
 Python 3 is usually pre-installed on Ubuntu, but it doesn't hurt to ensure it's present:
 ```bash
 sudo apt update
@@ -119,13 +129,20 @@ student002,Bob Jones,,
 
 ## 4. Initial Setup
 
-### 4.1 Copy Example Roster
+### 4.1 Clone the Repository
+First, clone this repository to your Linux host:
+```bash
+git clone https://github.com/j027/Epic-Research-Infra.git
+cd Epic-Research-Infra
+```
+
+### 4.2 Copy Example Roster
 ```bash
 cp students_example.csv students.csv
 ```
 Populate `student_id` and `student_name` for each row. Leave `port` and `subnet_id` blank initially.
 
-### 4.2 Configure Lab Flags (Required)
+### 4.3 Configure Lab Flags (Required)
 ```bash
 cp flags.env.example flags.env
 ```
@@ -143,7 +160,7 @@ FLAG_LOCATION=/var/log/asdfgnarlyzxcv.zip
 - The password must be in the rockyou wordlist they use for cracking.
 - The flag content, zip password, and flag location can have spaces if they are enclosed in quotes.
 
-### 4.3 Build Images (first time ~5 min)
+### 4.4 Build Images (first time ~5 min)
 ```bash
 ./lab_manager.py build
 ```
