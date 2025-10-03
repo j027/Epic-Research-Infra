@@ -109,20 +109,23 @@ cp flags.env.example flags.env
 Edit `flags.env` to set your custom flag content and zip password:
 
 ```bash
-# Cybersecurity Lab Flag Configuration
-FLAG_CONTENT=your_custom_flag_here
-ZIP_PASSWORD=your_secure_password
-FLAG_LOCATION=/var/log/flag.zip
+# this is just an example; change to your desired values
+FLAG_CONTENT=f4k3_fl4g_f0r_t3st1ng
+ZIP_PASSWORD=maggie
+FLAG_LOCATION=/var/log/asdfgnarlyzxcv.zip
 ```
-
-> Students will need to crack the ZIP_PASSWORD to access the FLAG_CONTENT in Ubuntu Target 1.
-> The password must be in the wordlist they use for cracking.
-> The flag content, zip password, and flag location can have spaces if they are enclosed in quotes.
+**Important notes:**
+- Use "gnarly" (or a referenced keyword) in the flag's filename for easy student search.
+- Students will need to crack the ZIP_PASSWORD to access the FLAG_CONTENT in Ubuntu Target 1.
+- The password must be in the rockyou wordlist they use for cracking.
+- The flag content, zip password, and flag location can have spaces if they are enclosed in quotes.
 
 ### 4.3 Build Images (first time ~5 min)
 ```bash
 ./lab_manager.py build
 ```
+
+> **Note:** Lab manager commands use `sudo` for Docker operations. Enter your password when prompted.
 
 ---
 
@@ -134,6 +137,7 @@ FLAG_LOCATION=/var/log/flag.zip
 ```
 Creates (or reuses) per‑student networks & containers. Assigns any missing ports/subnets.
 
+> After this stage, distribute the updated `students.csv` (or at least the port list) to students. This is needed for them to SSH in.
 ### 5.2 Reconcile Running State With CSV
 ```bash
 ./lab_manager.py class reconcile students.csv
@@ -283,17 +287,6 @@ pytest tests/test_capacity.py -v -s -m capacity
 - After infrastructure changes to verify capacity
 - When planning for class size increases
 - To establish safe operating limits
-
-#### 9.3.1 When Changing Dockerfiles
-If you modify any Dockerfiles, you may need to clear any old images with the following commands:
-```bash
-sudo docker system prune -a
-sudo docker builder prune -a
-```
-> Warning: This will remove all unused images, not just those related to this project.
-
-If you do not do this, the old images may be cached when running tests.
-This is primarily needed during **development** when you are changing the Dockerfiles.
 
 ### 9.4 Parallel vs Sequential Operations
 Some operations (e.g. class up/down) can run in parallel. The tool will prompt for confirmation before parallel execution. If output interleaving is confusing or the host is resource‑constrained, re-run with sequential mode:
