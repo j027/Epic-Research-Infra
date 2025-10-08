@@ -5,13 +5,15 @@ FROM heywoodlh/vulnerable@sha256:a608b548838c2bb947d62ee9e9a97bd7ef966c8ab0e27cb
 # delete the user with a weak password
 RUN userdel -r vuln
 
-# Install zip utility for flag creation
-RUN apt-get update && apt-get install -y zip sshpass && rm -rf /var/lib/apt/lists/*
+# Install zip utility for flag creation and telnet server
+RUN apt-get update && apt-get install -y zip sshpass xinetd telnetd && rm -rf /var/lib/apt/lists/*
 
 ##ProFTPD
 EXPOSE 21
 ## OpenSSH
 EXPOSE 22
+## Telnet
+EXPOSE 23
 ## HTTP
 EXPOSE 80
 ## Samba
@@ -32,8 +34,15 @@ EXPOSE 8181
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY start.sh /start.sh
 COPY create-flag.sh /create-flag.sh
+COPY telnet /etc/xinetd.d/telnet
+COPY issue.net /etc/issue.net
 
 # Make scripts executable
 RUN chmod +x /start.sh /create-flag.sh
+
+# Create msfadmin user with password 'msfadmin' for both telnet and SSH access
+RUN useradd -m -s /bin/bash msfadmin && \
+    echo 'msfadmin:msfadmin' | chpasswd && \
+    usermod -aG sudo msfadmin
 
 ENTRYPOINT ["/create-flag.sh"]

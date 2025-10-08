@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-/create-flag.sh
-
 if ps aux | grep -q mysqld
 then
 	mysql --user="root" --skip-password --execute="DROP DATABASE IF EXISTS payroll; CREATE DATABASE payroll;" \
