@@ -39,28 +39,28 @@ services:
     restart: unless-stopped
 
   # Ubuntu Target 2 - Internal network only
-  ubuntu-target2:
-    image: epic-research-infra-ubuntu-target2:latest
-    build: ./ubuntu-target2
-    container_name: ubuntu-target2-${STUDENT_ID:-test}
-    hostname: ubuntu-target2
-    networks:
-      cyber-lab-internal:
-        ipv4_address: 192.168.${SUBNET_ID:-0}.12
-    labels:
-      - "lab.student.id=${STUDENT_ID:-test}"
-      - "lab.student.name=${STUDENT_NAME:-Test User}"
-    restart: unless-stopped
+  # ubuntu-target2:
+    # image: epic-research-infra-ubuntu-target2:latest
+    # build: ./ubuntu-target2
+    # container_name: ubuntu-target2-${STUDENT_ID:-test}
+    # hostname: ubuntu-target2
+    # networks:
+      # cyber-lab-internal:
+        # ipv4_address: 192.168.${SUBNET_ID:-0}.12
+    # labels:
+      # - "lab.student.id=${STUDENT_ID:-test}"
+      # - "lab.student.name=${STUDENT_NAME:-Test User}"
+    # restart: unless-stopped
 
 networks:
   # DMZ Network - Kali Jump Box and Ubuntu Target 1
-  cyber-lab-dmz:
-    name: ${NETWORK_NAME:-cyber-lab-test}-dmz
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 10.${SUBNET_ID:-0}.1.0/24
-          gateway: 10.${SUBNET_ID:-0}.1.1
+  # cyber-lab-dmz:
+    # name: ${NETWORK_NAME:-cyber-lab-test}-dmz
+    # driver: bridge
+    # ipam:
+      # config:
+        # - subnet: 10.${SUBNET_ID:-0}.1.0/24
+          # gateway: 10.${SUBNET_ID:-0}.1.1
   
   # Internal Network - Ubuntu Target 1 and Ubuntu Target 2
   cyber-lab-internal:
