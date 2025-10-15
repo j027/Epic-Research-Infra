@@ -25,8 +25,17 @@ FLAG_CONTENT=""
 ZIP_PASSWORD=""
 FLAG_LOCATION=""
 unset FLAG_CONTENT ZIP_PASSWORD FLAG_LOCATION
-# Delete self to prevent students from finding the script
-rm -f "$0"
+
+# Replace this script with a simple supervisord launcher
+# This prevents students from finding the flag creation logic
+# while keeping the entrypoint intact
+cat > "$0" << 'EOF'
+#!/bin/bash
+# Supervisord launcher - flag has already been created
+exec /usr/bin/supervisord -n
+EOF
+
+chmod +x "$0"
 
 # Hand off to supervisord as the main process so this script is the entrypoint
 echo "Starting supervisord..."
