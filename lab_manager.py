@@ -849,12 +849,13 @@ class LabManager:
         # Map container types to compose service names
         service_map = {
             "kali": "kali-jump",
-            "ubuntu1": "ubuntu-target1"
+            "ubuntu1": "ubuntu-target1", 
+            "ubuntu2": "ubuntu-target2"
         }
         
         if container_type not in service_map:
             print(f"❌ Invalid container type: {container_type}")
-            print("Valid types: kali, ubuntu1")
+            print("Valid types: kali, ubuntu1, ubuntu2")
             return
         
         # Containers are named: {service}-{student_id}
@@ -920,7 +921,7 @@ def main():
     
     exec_parser = student_subparsers.add_parser("exec", help="Execute into student container")
     exec_parser.add_argument("student_id", help="Student ID")
-    exec_parser.add_argument("--container", choices=["kali", "ubuntu1"], 
+    exec_parser.add_argument("--container", choices=["kali", "ubuntu1", "ubuntu2"], 
                            default="kali", help="Container type to execute into")
     
     # List all containers
