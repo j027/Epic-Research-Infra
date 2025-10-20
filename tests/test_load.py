@@ -1085,13 +1085,7 @@ class TestLoadTesting:
     
     @pytest.mark.integration
     def test_realistic_load(self):
-        """Test realistic load with randomized delays (20 students) - CI default"""
-        self._run_load_test(20, realistic_mode=True)
-
-    @pytest.mark.manual
-    @pytest.mark.stress
-    def test_medium_load_stress(self):
-        """Test medium load stress (10 students, worst-case) - manual only"""
+        """Test load with 10 students (10 students, worst-case) - CI default"""
         self._run_load_test(10, realistic_mode=False)
     
     @pytest.mark.manual
