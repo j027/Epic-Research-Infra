@@ -2,9 +2,6 @@
 # to prevent things from breaking
 FROM heywoodlh/vulnerable@sha256:a608b548838c2bb947d62ee9e9a97bd7ef966c8ab0e27cbf6bddf5e55b578189
 
-# delete the user with a weak password
-RUN userdel -r vuln
-
 # Install zip utility for flag creation and telnet server
 RUN apt-get update && apt-get install -y zip sshpass xinetd telnetd && rm -rf /var/lib/apt/lists/*
 
@@ -32,6 +29,7 @@ EXPOSE 3306
 EXPOSE 8181
 
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY supervisor.d/*.conf /etc/supervisor/conf.d/
 COPY start.sh /start.sh
 COPY create-flag.sh /create-flag.sh
 COPY telnet /etc/xinetd.d/telnet
