@@ -218,6 +218,7 @@ password: student123
 
 ## 7. Security & Data Notes
 * Isolation: Each student has their own isolated network; no cross‑student access (by design).
+* Resource Limits: Each container has CPU (2 cores), memory (1GB), and PID limits (128 processes) to prevent resource exhaustion and fork bomb attacks.
 * Ephemeral Changes: No host volumes are mounted. ALL changes inside containers are lost on `recreate` or class `down`.
 * Do NOT manually edit assigned `port` / `subnet_id` values unless intentionally resolving a conflict. To clear an assignment, blank the field and run `reconcile`.
 * Audit / inspection: Use `student status`, `student exec`, and `list` commands.

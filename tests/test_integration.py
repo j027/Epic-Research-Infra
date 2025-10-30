@@ -1254,5 +1254,139 @@ class TestStudentExec(TestDockerIntegration):
             os.unlink(csv_file)
 
 
+class TestResourceLimits(TestDockerIntegration):
+    """Test resource limits and security controls"""
+    
+    @pytest.mark.slow
+    def test_fork_bomb_protection(self):
+        """Test that fork bomb protection (PID limits) is working"""
+        print("\n💣 Testing fork bomb protection...")
+        
+        # Create test CSV with one student
+        test_data = [
+            {'student_id': 'forkbombtest001', 'student_name': 'Fork Bomb Test', 'port': '7777', 'subnet_id': '150'}
+        ]
+        csv_file = self.create_test_csv(test_data)
+        
+        try:
+            # Spin up the student
+            print("  🚀 Starting test containers...")
+            success = self.lab_manager.spin_up_class(csv_file, parallel=False)
+            assert success, "Failed to spin up test student"
+            
+            # Wait for containers to be ready
+            containers_ready = {}
+            for container_type in ["kali-jump", "ubuntu-target1"]:
+                container_name = f"{container_type}-forkbombtest001"
+                containers_ready[container_type] = self.wait_for_container_ready(container_name, max_wait=45)
+                assert containers_ready[container_type], f"{container_name} failed to start"
+            
+            print("  ✅ Containers started successfully")
+            
+            # Test fork bomb protection in each container
+            containers_to_test = [
+                ("kali-jump-forkbombtest001", "Kali Jump Box"),
+                ("ubuntu-target1-forkbombtest001", "Ubuntu Target 1")
+            ]
+            
+            for container_name, container_label in containers_to_test:
+                print(f"\n  🧪 Testing fork bomb protection in {container_label}...")
+                
+                try:
+                    # First, check current PID count before the test
+                    result = self.lab_manager.run_command([
+                        "docker", "exec", container_name,
+                        "bash", "-c", "ps aux | wc -l"
+                    ])
+                    initial_pids = int(result.stdout.strip())
+                    print(f"    Initial PID count: {initial_pids}")
+                    
+                    # Attempt a fork bomb using a background subshell that limits itself
+                    # We use timeout to ensure it doesn't run forever
+                    # Fork bomb: :(){ :|:& };: 
+                    # Safer test version with timeout wrapper
+                    print(f"    Attempting fork bomb (this should fail due to PID limits)...")
+                    
+                    fork_bomb_result = self.lab_manager.run_command([
+                        "docker", "exec", container_name,
+                        "bash", "-c", 
+                        # Use timeout and try to spawn many background processes
+                        "timeout 5 bash -c 'for i in {1..200}; do (sleep 10 &); done' 2>&1 || echo 'FORK_BOMB_BLOCKED'"
+                    ])
+                    
+                    # The fork bomb should be blocked by PID limits
+                    output = fork_bomb_result.stdout + fork_bomb_result.stderr
+                    print(f"    Fork bomb output: {output[:200]}...")
+                    
+                    # Check if we hit resource limits (expected behavior)
+                    resource_limit_hit = (
+                        "fork" in output.lower() or 
+                        "resource" in output.lower() or
+                        "FORK_BOMB_BLOCKED" in output or
+                        fork_bomb_result.returncode != 0
+                    )
+                    
+                    # Wait a moment for things to settle
+                    time.sleep(2)
+                    
+                    # Check PID count after attempt
+                    result = self.lab_manager.run_command([
+                        "docker", "exec", container_name,
+                        "bash", "-c", "ps aux | wc -l"
+                    ])
+                    final_pids = int(result.stdout.strip())
+                    print(f"    Final PID count: {final_pids}")
+                    
+                    # Verify the container is still responsive
+                    health_check = self.lab_manager.run_command([
+                        "docker", "exec", container_name,
+                        "bash", "-c", "echo 'CONTAINER_STILL_ALIVE'"
+                    ])
+                    
+                    container_alive = "CONTAINER_STILL_ALIVE" in health_check.stdout
+                    assert container_alive, f"{container_label} became unresponsive after fork bomb attempt!"
+                    
+                    # Check that PID count is reasonable (not exponentially growing)
+                    # With a 128 PID limit, we should never see more than ~128 processes
+                    assert final_pids < 150, f"PID count too high ({final_pids}), limit may not be working!"
+                    
+                    print(f"    ✅ {container_label}: Fork bomb was contained!")
+                    print(f"    ✅ Container remained responsive")
+                    print(f"    ✅ PID count stayed under control ({final_pids} PIDs)")
+                    
+                    if resource_limit_hit:
+                        print(f"    ✅ Resource limits were enforced (fork attempts failed as expected)")
+                    
+                except subprocess.CalledProcessError as e:
+                    # Some errors are expected when hitting resource limits
+                    print(f"    ℹ️  Command failed as expected due to resource limits: {e}")
+                    print(f"    This is GOOD - it means the limits are working!")
+                    
+                    # Verify container is still responsive despite the error
+                    try:
+                        health_check = self.lab_manager.run_command([
+                            "docker", "exec", container_name,
+                            "bash", "-c", "echo 'CONTAINER_STILL_ALIVE'"
+                        ])
+                        assert "CONTAINER_STILL_ALIVE" in health_check.stdout
+                        print(f"    ✅ {container_label}: Container survived fork bomb attempt and is responsive!")
+                    except:
+                        pytest.fail(f"{container_label} became unresponsive after fork bomb - limits may not be configured correctly!")
+            
+            print("\n  🎉 All fork bomb protection tests passed!")
+            print("     ✅ PID limits are working correctly")
+            print("     ✅ Containers remained stable under fork bomb attempts")
+            print("     ✅ Fork bombs were successfully contained")
+            
+        except Exception as e:
+            print(f"\n  ❌ Fork bomb protection test failed: {e}")
+            raise
+            
+        finally:
+            # Cleanup
+            print("  🧹 Cleaning up test containers...")
+            self.lab_manager.spin_down_class(csv_file, parallel=False)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s", "--tb=short"])

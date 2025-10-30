@@ -17,6 +17,12 @@ services:
       - "lab.student.name=${STUDENT_NAME:-Test User}"
       - "lab.student.port=${SSH_PORT:-2222}"
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+          pids: 128
 
   # Ubuntu Target 1
   ubuntu-target1:
@@ -35,6 +41,12 @@ services:
       - "lab.student.id=${STUDENT_ID:-test}"
       - "lab.student.name=${STUDENT_NAME:-Test User}"
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+          pids: 128
 
 networks:
   # Internal Network - Kali Jump Box and Ubuntu Target 1
