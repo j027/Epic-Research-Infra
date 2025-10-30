@@ -6,22 +6,14 @@ echo ""
 echo "Welcome to your Kali Linux Jump Box!"
 echo ""
 echo "Network Information:"
-# Get the actual IP from DMZ network interface
+# Get the actual IP from internal network interface
 MY_IP=$(ip route get 1.1.1.1 | grep -oP 'src \K\S+' 2>/dev/null || hostname -I | awk '{print $1}')
-DMZ_SUBNET=$(echo $MY_IP | cut -d. -f1-3)
-# Calculate internal subnet from DMZ subnet
-SUBNET_ID=$(echo $MY_IP | cut -d. -f2)
-echo "  DMZ Network:      ${DMZ_SUBNET}.0/24 (Gateway: ${DMZ_SUBNET}.1)"
-echo "  Internal Network: 192.168.${SUBNET_ID}.0/24 (Gateway: 192.168.${SUBNET_ID}.1)"
+INTERNAL_SUBNET=$(echo $MY_IP | cut -d. -f1-3)
+echo "  Internal Network: ${INTERNAL_SUBNET}.0/24 (Gateway: ${INTERNAL_SUBNET}.1)"
 echo ""
-echo "Accessible Hosts (from Kali Jump Box):"
-echo "  Kali Jump Box:   kali-jump      ($MY_IP) [DMZ]"
-echo "  Ubuntu Target 1: ubuntu-target1 (${DMZ_SUBNET}.11) [DMZ + Internal]"
-echo ""
-echo "⚠️  PIVOTING REQUIRED:"
-echo "  Ubuntu Target 2 (ubuntu-target2) is only accessible"
-echo "  via the internal network (192.168.${SUBNET_ID}.12)."
-echo "  You must compromise Ubuntu Target 1 first to reach it!"
+echo "Accessible Hosts:"
+echo "  Kali Jump Box:   kali-jump      ($MY_IP)"
+echo "  Ubuntu Target 1: ubuntu-target1 (${INTERNAL_SUBNET}.11)"
 echo ""
 echo "Getting Started:"
 echo "  Change password:       passwd"

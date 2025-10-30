@@ -620,7 +620,7 @@ class LabManager:
                         if names:
                             for name in names.split(','):
                                 # Look for our service patterns
-                                if any(service in name for service in ['kali-jump-', 'ubuntu-target1-', 'ubuntu-target2-']):
+                                if any(service in name for service in ['kali-jump-', 'ubuntu-target1-']):
                                     # Extract student ID from the end of the name
                                     parts = name.split('-')
                                     if len(parts) >= 2:
@@ -849,13 +849,12 @@ class LabManager:
         # Map container types to compose service names
         service_map = {
             "kali": "kali-jump",
-            "ubuntu1": "ubuntu-target1", 
-            "ubuntu2": "ubuntu-target2"
+            "ubuntu1": "ubuntu-target1"
         }
         
         if container_type not in service_map:
             print(f"❌ Invalid container type: {container_type}")
-            print("Valid types: kali, ubuntu1, ubuntu2")
+            print("Valid types: kali, ubuntu1")
             return
         
         # Containers are named: {service}-{student_id}

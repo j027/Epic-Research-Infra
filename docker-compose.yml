@@ -6,7 +6,7 @@ services:
     container_name: kali-jump-${STUDENT_ID:-test}
     hostname: kali-jump
     networks:
-      cyber-lab-dmz:
+      cyber-lab-internal:
         ipv4_address: 10.${SUBNET_ID:-0}.1.10
     ports:
       - "${SSH_PORT:-2222}:22"  # External SSH access
@@ -18,7 +18,7 @@ services:
       - "lab.student.port=${SSH_PORT:-2222}"
     restart: unless-stopped
 
-  # Ubuntu Target 1 - Dual-homed (DMZ + Internal networks)
+  # Ubuntu Target 1
   ubuntu-target1:
     image: epic-research-infra-ubuntu-target1:latest
     stop_grace_period: 1s
@@ -29,44 +29,19 @@ services:
       - path: flags.env
         required: false
     networks:
-      cyber-lab-dmz:
+      cyber-lab-internal:
         ipv4_address: 10.${SUBNET_ID:-0}.1.11
-      cyber-lab-internal:
-        ipv4_address: 192.168.${SUBNET_ID:-0}.11
-    labels:
-      - "lab.student.id=${STUDENT_ID:-test}"
-      - "lab.student.name=${STUDENT_NAME:-Test User}"
-    restart: unless-stopped
-
-  # Ubuntu Target 2 - Internal network only
-  ubuntu-target2:
-    image: epic-research-infra-ubuntu-target2:latest
-    build: ./ubuntu-target2
-    container_name: ubuntu-target2-${STUDENT_ID:-test}
-    hostname: ubuntu-target2
-    networks:
-      cyber-lab-internal:
-        ipv4_address: 192.168.${SUBNET_ID:-0}.12
     labels:
       - "lab.student.id=${STUDENT_ID:-test}"
       - "lab.student.name=${STUDENT_NAME:-Test User}"
     restart: unless-stopped
 
 networks:
-  # DMZ Network - Kali Jump Box and Ubuntu Target 1
-  cyber-lab-dmz:
-    name: ${NETWORK_NAME:-cyber-lab-test}-dmz
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 10.${SUBNET_ID:-0}.1.0/24
-          gateway: 10.${SUBNET_ID:-0}.1.1
-  
-  # Internal Network - Ubuntu Target 1 and Ubuntu Target 2
+  # Internal Network - Kali Jump Box and Ubuntu Target 1
   cyber-lab-internal:
     name: ${NETWORK_NAME:-cyber-lab-test}-internal
     driver: bridge
     ipam:
       config:
-        - subnet: 192.168.${SUBNET_ID:-0}.0/24
-          gateway: 192.168.${SUBNET_ID:-0}.1
+        - subnet: 10.${SUBNET_ID:-0}.1.0/24
+          gateway: 10.${SUBNET_ID:-0}.1.1
