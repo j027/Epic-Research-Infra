@@ -958,6 +958,20 @@ EOF"""
 class TestLoadTesting:
     """Load testing test cases"""
     
+    def _needs_sudo_for_docker(self) -> bool:
+        """Check if Docker requires sudo by trying a simple command"""
+        try:
+            result = subprocess.run(
+                ["docker", "info"], 
+                capture_output=True, 
+                text=True, 
+                timeout=10
+            )
+            return result.returncode != 0
+        except:
+            # If Docker command fails, assume we need sudo
+            return True
+    
     @pytest.fixture(autouse=True)
     def setup_and_teardown(self):
         """Setup and teardown for each test with cleanup on interruption"""
@@ -966,7 +980,12 @@ class TestLoadTesting:
         import sys
         sys.path.insert(0, self.project_root)
         from lab_manager import LabManager
-        self.lab_manager = LabManager(use_sudo=True)
+        
+        # Auto-detect if sudo is needed for Docker
+        use_sudo = self._needs_sudo_for_docker()
+        print(f"\n🔧 Using sudo for Docker: {use_sudo}")
+        
+        self.lab_manager = LabManager(use_sudo=use_sudo)
         self.test_csv_files = []
         
         yield
@@ -1028,7 +1047,12 @@ class TestLoadTesting:
             import sys
             sys.path.insert(0, self.project_root)
             from lab_manager import LabManager
-            self.lab_manager = LabManager(use_sudo=True)
+            
+            # Auto-detect if sudo is needed for Docker
+            use_sudo = self._needs_sudo_for_docker()
+            print(f"\n🔧 Using sudo for Docker: {use_sudo}")
+            
+            self.lab_manager = LabManager(use_sudo=use_sudo)
             self.test_csv_files = []
         
     def create_test_students_csv(self, num_students: int) -> str:

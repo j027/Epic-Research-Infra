@@ -422,6 +422,20 @@ class CapacityTester:
 class TestCapacityFinder:
     """Capacity testing - finds maximum student load via binary search"""
     
+    def _needs_sudo_for_docker(self) -> bool:
+        """Check if Docker requires sudo by trying a simple command"""
+        try:
+            result = subprocess.run(
+                ["docker", "info"], 
+                capture_output=True, 
+                text=True, 
+                timeout=10
+            )
+            return result.returncode != 0
+        except:
+            # If Docker command fails, assume we need sudo
+            return True
+    
     @pytest.fixture(autouse=True)
     def setup_and_teardown(self):
         """Setup and teardown for capacity testing"""
@@ -429,7 +443,11 @@ class TestCapacityFinder:
         sys.path.insert(0, project_root)
         from lab_manager import LabManager
         
-        self.lab_manager = LabManager(use_sudo=True)
+        # Auto-detect if sudo is needed for Docker
+        use_sudo = self._needs_sudo_for_docker()
+        print(f"\n🔧 Using sudo for Docker: {use_sudo}")
+        
+        self.lab_manager = LabManager(use_sudo=use_sudo)
         self.tester = CapacityTester(self.lab_manager)
         
         yield
@@ -476,7 +494,25 @@ if __name__ == "__main__":
     sys.path.insert(0, project_root)
     from lab_manager import LabManager
     
-    lab_manager = LabManager(use_sudo=True)
+    # Auto-detect if sudo is needed for Docker
+    def _needs_sudo_for_docker() -> bool:
+        """Check if Docker requires sudo by trying a simple command"""
+        try:
+            result = subprocess.run(
+                ["docker", "info"], 
+                capture_output=True, 
+                text=True, 
+                timeout=10
+            )
+            return result.returncode != 0
+        except:
+            # If Docker command fails, assume we need sudo
+            return True
+    
+    use_sudo = _needs_sudo_for_docker()
+    print(f"\n🔧 Using sudo for Docker: {use_sudo}")
+    
+    lab_manager = LabManager(use_sudo=use_sudo)
     tester = CapacityTester(lab_manager)
     
     # Run capacity finder
