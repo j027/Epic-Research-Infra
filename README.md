@@ -135,25 +135,7 @@ cp students_example.csv students.csv
 ```
 Populate `student_id` and `student_name` for each row. Leave `port` and `subnet_id` blank initially.
 
-### 4.3 Configure Lab Flags (Required)
-```bash
-cp flags.env.example flags.env
-```
-Edit `flags.env` to set your custom flag content and zip password:
-
-```bash
-# this is just an example; change to your desired values
-FLAG_CONTENT=f4k3_fl4g_f0r_t3st1ng
-ZIP_PASSWORD=maggie
-FLAG_LOCATION=/var/log/asdfgnarlyzxcv.zip
-```
-**Important notes:**
-- Use "gnarly" (or a referenced keyword) in the flag's filename for easy student search.
-- Students will need to crack the ZIP_PASSWORD to access the FLAG_CONTENT in Ubuntu Target 1.
-- The password must be in the rockyou wordlist they use for cracking.
-- The flag content, zip password, and flag location can have spaces if they are enclosed in quotes.
-
-### 4.4 Build Images (first time ~5 min)
+### 4.3 Build Images (first time ~5 min)
 ```bash
 ./lab_manager.py build
 ```
@@ -236,8 +218,6 @@ password: student123
 | Wrong subnet allocation | Delete stale row assignments (ports/subnets) and rerun `up` / `reconcile`. |
 | Containers not removed | Run `docker compose -p cyber-lab-<id> down -v --remove-orphans` manually. |
 | Need clean slate | Stop everything, remove networks: `docker network prune` (⚠️ affects other networks—review first). |
-| Missing flags.env file | Copy `flags.env.example` to `flags.env` and customize flag content before building. |
-| Default flags appear | Check that `flags.env` exists and containers were rebuilt after creating it. |
 | SSH host key changed | Image rebuild + container recreation generates new SSH keys (mainly during development). Remove old key: `ssh-keygen -R '[localhost]:2222'` (replace with actual host/port). |
 
 ### 8.1 SSH Host Key Changed Error

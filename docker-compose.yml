@@ -31,9 +31,6 @@ services:
     build: ./ubuntu-target1
     container_name: ubuntu-target1-${STUDENT_ID:-test}
     hostname: ubuntu-target1
-    env_file:
-      - path: flags.env
-        required: false
     networks:
       cyber-lab-internal:
         ipv4_address: 10.${SUBNET_ID:-0}.1.11

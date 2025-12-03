@@ -35,12 +35,9 @@ COPY create-flag.sh /create-flag.sh
 COPY telnet /etc/xinetd.d/telnet
 COPY issue.net /etc/issue.net
 
-# Make scripts executable
-RUN chmod +x /start.sh /create-flag.sh
-
 # Create msfadmin user with password 'msfadmin' for both telnet and SSH access
 RUN useradd -m -s /bin/bash msfadmin && \
     echo 'msfadmin:msfadmin' | chpasswd && \
     usermod -aG sudo msfadmin
 
-ENTRYPOINT ["/create-flag.sh"]
+ENTRYPOINT ["/usr/bin/supervisord"]
