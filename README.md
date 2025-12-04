@@ -77,6 +77,8 @@ After installation:
 
 > **Windows Users:** If prompted, enable WSL 2 during installation. You may need to restart.
 
+> **Linux Users:** You can use Docker Engine instead of Docker Desktop if you prefer. After installing, add your user to the `docker` group to run without `sudo`: https://docs.docker.com/engine/install/linux-postinstall/
+
 ---
 
 ## 3. Clone and Build
@@ -156,9 +158,17 @@ From the Kali jump box, you can reach targets by **hostname** or **IP**:
 ping ubuntu-target1
 nmap ubuntu-target1
 
+ping kali-jump
+nmap kali-jump
+
 # Using IP address
+# ubuntu-target1
 ping 10.0.1.11
 nmap 10.0.1.11
+
+# kali-jump
+ping 10.0.1.10
+nmap 10.0.1.10
 ```
 
 > 💡 **Tip:** Hostnames usually work and are easier to type than IP addresses.
