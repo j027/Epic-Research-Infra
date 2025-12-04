@@ -35,6 +35,11 @@ COPY create-flag.sh /create-flag.sh
 COPY telnet /etc/xinetd.d/telnet
 COPY issue.net /etc/issue.net
 
+# add Army Week plans to hidden directory
+RUN mkdir -p /home/msfadmin/.secret/.plans/
+COPY Army_Week_Plans.txt /home/msfadmin/.secret/.plans/Army_Week_Plans.txt
+RUN chown -R msfadmin:msfadmin /home/msfadmin/.secret
+
 # Create msfadmin user with password 'msfadmin' for both telnet and SSH access
 RUN useradd -m -s /bin/bash msfadmin && \
     echo 'msfadmin:msfadmin' | chpasswd && \
