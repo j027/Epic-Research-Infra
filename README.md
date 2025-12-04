@@ -77,7 +77,7 @@ After installation:
 
 > **Windows Users:** If prompted, enable WSL 2 during installation. You may need to restart.
 
-> **Linux Users:** You can use Docker Engine instead of Docker Desktop if you prefer. After installing, add your user to the `docker` group to run without `sudo`: https://docs.docker.com/engine/install/linux-postinstall/
+> **Linux Users:** You can also use [Docker Engine](https://docs.docker.com/engine/install/) instead of Docker Desktop.
 
 ---
 
