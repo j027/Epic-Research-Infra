@@ -41,7 +41,7 @@ If not installed, you'll be prompted to install Xcode Command Line Tools automat
 ### Windows
 Download and install from: https://git-scm.com/download/windows
 
-Use default options during installation. After installing, use **Git Bash** or any terminal.
+Use default options during installation.
 
 ### Linux
 ```bash
