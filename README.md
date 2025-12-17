@@ -226,7 +226,33 @@ docker compose logs
 
 ---
 
-## 8. Password Security
+## 8. Cleaning Up (Free Disk Space)
+
+The lab images take up several gigabytes. When you're done with the labs that use this environment, you can reclaim disk space:
+
+### Remove Lab Containers and Images
+```bash
+# Stop and remove containers
+docker compose down
+
+# Remove the lab images
+docker rmi epic-research-infra-kali-jump:latest epic-research-infra-ubuntu-target1:latest
+```
+
+### Clear Build Cache
+Docker caches intermediate build layers. To free this space:
+```bash
+# Remove only build cache (safe - doesn't affect running containers)
+docker builder prune
+```
+
+> 💡 **Tip:** Run `docker system df` to see how much space Docker is using.
+
+> ⚠️ **Warning:** Avoid `docker system prune` unless you understand it—this removes ALL unused containers, networks, and images across your entire Docker installation, not just this lab.
+
+---
+
+## 9. Password Security
 
 Since the lab runs locally on your own machine, the default password is fine—only you can access it.
 
@@ -238,13 +264,13 @@ after logging into the Kali jump box.
 
 ---
 
-## Multi-Host Deployment (Instructors)
+## 10. Multi-Host Deployment (Instructors)
 
 For deploying the lab environment for an entire class on a shared server, see the [Lab Manager Guide](docs/LAB_MANAGER.md).
 
 ---
 
-## License
+## 11. License
 
 This project is licensed under the Unlicense (public domain). See [`LICENSE`](LICENSE) for details.
 

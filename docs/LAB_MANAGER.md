@@ -243,7 +243,30 @@ pytest tests/test_capacity.py -v -s -m capacity
 
 ---
 
-## 10. Command Reference
+## 10. Cleaning Up (Free Disk Space)
+
+To reclaim disk space after decommissioning the lab:
+
+### Remove All Student Environments
+```bash
+./lab_manager.py class down students.csv
+```
+
+### Remove Lab Images
+```bash
+sudo docker rmi epic-research-infra-kali-jump:latest epic-research-infra-ubuntu-target1:latest
+```
+
+### Clear Build Cache
+```bash
+sudo docker builder prune
+```
+
+> 💡 Run `sudo docker system df` to see current disk usage.
+
+---
+
+## 11. Command Reference
 
 | Goal | Command |
 | ---- | ------- |
