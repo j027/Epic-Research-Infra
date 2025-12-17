@@ -147,6 +147,7 @@ class LabManager:
             'STUDENT_ID': student_id,
             'STUDENT_NAME': student_name,
             'SSH_PORT': str(port),
+            'SSH_BIND': '0.0.0.0',  # Lab manager binds to all interfaces for remote access
             'SUBNET_ID': str(subnet_id),
             'NETWORK_NAME': f'cyber-lab-{student_id}'
         }

@@ -9,7 +9,7 @@ services:
       cyber-lab-internal:
         ipv4_address: 10.${SUBNET_ID:-0}.1.10
     ports:
-      - "${SSH_PORT:-2222}:22"  # External SSH access
+      - "${SSH_BIND:-127.0.0.1}:${SSH_PORT:-2222}:22"  # External SSH access (localhost by default, 0.0.0.0 for lab manager)
     cap_add:
       - NET_ADMIN  # Seems to be required for nmap to work
     labels:
