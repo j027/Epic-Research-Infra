@@ -228,12 +228,13 @@ docker compose logs
 
 ## 8. Password Security
 
-Since the lab runs locally on your own machine, the default password is fine—only you can access it, assuming you have a working firewall.
+Since the lab runs locally on your own machine, the default password is fine—only you can access it.
 
-If you want to change it anyway:
+If you want to change it anyways, use the command
 ```bash
 passwd
 ```
+after logging into the Kali jump box.
 
 ---
 
