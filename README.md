@@ -39,7 +39,7 @@ git --version
 If not installed, you'll be prompted to install Xcode Command Line Tools automatically.
 
 ### Windows
-Download and install from: https://git-scm.com/download/windows
+Download and install from: https://git-scm.com/install/windows
 
 Use default options during installation.
 
