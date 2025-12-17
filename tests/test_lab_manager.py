@@ -546,6 +546,7 @@ class TestEnvironmentGeneration:
         expected = {
             'STUDENT_ID': 'student001',
             'STUDENT_NAME': 'Alice Smith',
+            'SSH_BIND': '0.0.0.0',
             'SSH_PORT': '2222',
             'SUBNET_ID': '42',
             'NETWORK_NAME': 'cyber-lab-student001'
