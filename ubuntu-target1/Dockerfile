@@ -3,7 +3,7 @@
 FROM heywoodlh/vulnerable@sha256:a608b548838c2bb947d62ee9e9a97bd7ef966c8ab0e27cbf6bddf5e55b578189
 
 # Install zip utility for flag creation and telnet server
-RUN apt-get update && apt-get install -y zip sshpass xinetd telnetd && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y zip sshpass xinetd telnetd net-tools && rm -rf /var/lib/apt/lists/*
 
 ##ProFTPD
 EXPOSE 21

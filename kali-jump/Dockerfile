@@ -16,7 +16,8 @@ RUN apt-get update && apt-get install -y \
     vim \
     openssh-server \
     expect \
-    telnet
+    telnet \
+    net-tools
 
 # Unzip the rockyou wordlist for immediate availability
 # this way students don't have to do it themselves
