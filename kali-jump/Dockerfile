@@ -17,7 +17,8 @@ RUN apt-get update && apt-get install -y \
     openssh-server \
     expect \
     telnet \
-    net-tools
+    net-tools \
+    man-db
 
 # Unzip the rockyou wordlist for immediate availability
 # this way students don't have to do it themselves
