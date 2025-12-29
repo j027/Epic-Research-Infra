@@ -44,6 +44,28 @@ services:
           cpus: '2.0'
           memory: 1G
           pids: 128
+  
+  # Ubuntu target 2
+  secret-target:
+    image: epic-research-infra-ubuntu-target2:latest
+    stop_grace_period: 1s
+    build: ./ubuntu-target2
+    container_name: secret-target-${STUDENT_ID:-test}
+    hostname: secret-target
+    networks:
+      cyber-lab-internal:
+        # this target uses a different nonconsecutive IP to encourage students to scan the network
+        ipv4_address: 10.${SUBNET_ID:-0}.1.231
+    labels:
+      - "lab.student.id=${STUDENT_ID:-test}"
+      - "lab.student.name=${STUDENT_NAME:-Test User}"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+          pids: 128
 
 networks:
   # Internal Network - Kali Jump Box and Ubuntu Target 1
