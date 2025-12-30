@@ -30,7 +30,7 @@ services:
     stop_grace_period: 1s
     build: ./ubuntu-target1
     container_name: ubuntu-target1-${STUDENT_ID:-test}
-    hostname: ubuntu-target1
+    hostname: server1
     networks:
       cyber-lab-internal:
         ipv4_address: 10.${SUBNET_ID:-0}.1.11
@@ -50,8 +50,8 @@ services:
     image: epic-research-infra-ubuntu-target2:latest
     stop_grace_period: 1s
     build: ./ubuntu-target2
-    container_name: secret-target-${STUDENT_ID:-test}
-    hostname: secret-target
+    container_name: ubuntu-target2-${STUDENT_ID:-test}
+    hostname: secret-server
     networks:
       cyber-lab-internal:
         # this target uses a different nonconsecutive IP to encourage students to scan the network
