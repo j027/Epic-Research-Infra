@@ -1,6 +1,6 @@
 # Cybersecurity Lab Environment
 
-A Docker-based cybersecurity training lab with a Kali Linux jump box and vulnerable Ubuntu target. Run it locally on your own machine for hands-on practice.
+A Docker-based cybersecurity training lab with a Kali Linux jump box and vulnerable Ubuntu targets. Run it locally on your own machine for hands-on practice.
 
 ---
 
@@ -146,7 +146,8 @@ Network Information:
 
 Accessible Hosts:
   Kali Jump Box:   kali-jump      (10.0.1.10)
-  Ubuntu Target 1: ubuntu-target1 (10.0.1.11)
+  File Server:     file-server    (10.0.1.11)
+  ???              ???            (Scan to find me!)
 ```
 
 ### Accessing Targets
@@ -155,14 +156,14 @@ From the Kali jump box, you can reach targets by **hostname** or **IP**:
 
 ```bash
 # Using hostname (easier to remember)
-ping ubuntu-target1
-nmap ubuntu-target1
+ping file-server
+nmap file-server
 
 ping kali-jump
 nmap kali-jump
 
 # Using IP address
-# ubuntu-target1
+# file-server
 ping 10.0.1.11
 nmap 10.0.1.11
 
@@ -191,9 +192,12 @@ Your Computer
     Internal Network (10.0.1.0/24)
                │
 ┌──────────────┴──────────────────────┐
-│  Ubuntu Target 1 (10.0.1.11)        │
+│  File Server (10.0.1.11)            │
 │  - Vulnerable services              │
 │  - Your practice target             │
+│                                     │
+│  [?] Hidden Target                  │
+│  - Scan the network to find it!     │
 └─────────────────────────────────────┘
 ```
 
@@ -236,7 +240,7 @@ The lab images take up several gigabytes. When you're done with the labs that us
 docker compose down
 
 # Remove the lab images
-docker rmi epic-research-infra-kali-jump:latest epic-research-infra-ubuntu-target1:latest
+docker rmi epic-research-infra-kali-jump:latest epic-research-infra-ubuntu-target1:latest epic-research-infra-ubuntu-target2:latest
 ```
 
 ### Clear Build Cache
@@ -276,7 +280,7 @@ This project is licensed under the Unlicense (public domain). See [`LICENSE`](LI
 
 ### Third-Party Components
 
-- **ubuntu-target1/**: Docker implementation of Metasploitable3
+- **ubuntu-target1/** and **ubuntu-target2/**: Docker implementation of Metasploitable3
   - Docker implementation by heywoodlh: MIT License
   - Metasploitable3 by Rapid7: BSD-3-Clause License
   - See [`ubuntu-target1/LICENSE`](ubuntu-target1/LICENSE) for details

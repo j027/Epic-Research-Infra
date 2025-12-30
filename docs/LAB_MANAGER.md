@@ -21,12 +21,17 @@ External Network → Host: <assigned SSH port>
        │  (10.<subnet>.1.0/24)     │
        │                           │
        │      Ubuntu Target 1      │
-       └──────(10.<subnet>.1.11)───┘
+       │      (10.<subnet>.1.11)   │
+       │                           │
+       │      Ubuntu Target 2      │
+       └──────(10.<subnet>.1.231)──┘
 ```
 
 **Network Architecture:**
-- **Internal Network** (`10.<subnet>.1.0/24`): Contains Kali Jump Box + Ubuntu Target 1
+- **Internal Network** (`10.<subnet>.1.0/24`): Contains Kali Jump Box + Ubuntu Targets
 - Each student has their own isolated network preventing cross-student access
+- **Target 1** (`file-server`): Standard target at `.11`
+- **Target 2** (`build-server`): Hidden target at `.231` (intended for discovery via scanning)
 
 ### 1.2 Key Concepts
 | Concept | Description |
@@ -217,7 +222,7 @@ password: student123
 ```bash
 ./lab_manager.py student exec <student_id> --container kali
 ```
-Container types: `kali`, `ubuntu1`.
+Container types: `kali`, `ubuntu1`, `ubuntu2`.
 
 ---
 

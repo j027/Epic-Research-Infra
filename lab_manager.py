@@ -850,12 +850,13 @@ class LabManager:
         # Map container types to compose service names
         service_map = {
             "kali": "kali-jump",
-            "ubuntu1": "ubuntu-target1"
+            "ubuntu1": "ubuntu-target1",
+            "ubuntu2": "ubuntu-target2"
         }
         
         if container_type not in service_map:
             print(f"❌ Invalid container type: {container_type}")
-            print("Valid types: kali, ubuntu1")
+            print("Valid types: kali, ubuntu1, ubuntu2")
             return
         
         # Containers are named: {service}-{student_id}

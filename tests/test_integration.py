@@ -1005,23 +1005,29 @@ class TestStudentExec(TestDockerIntegration):
             container_names = [c.get('Names', '') for c in containers]
             kali_container = None
             ubuntu1_container = None
+            ubuntu2_container = None
             
             for name in container_names:
                 if 'kali-jump-exectest001' in name:
                     kali_container = name
                 elif 'ubuntu-target1-exectest001' in name:
                     ubuntu1_container = name
+                elif 'ubuntu-target2-exectest001' in name:
+                    ubuntu2_container = name
             
             assert kali_container, f"Kali container not found. Available: {container_names}"
             assert ubuntu1_container, f"Ubuntu1 container not found. Available: {container_names}"
+            assert ubuntu2_container, f"Ubuntu2 container not found. Available: {container_names}"
             
             print(f"  ✅ Found Kali container: {kali_container}")
             print(f"  ✅ Found Ubuntu1 container: {ubuntu1_container}")
+            print(f"  ✅ Found Ubuntu2 container: {ubuntu2_container}")
             
             # Test that the container names follow the expected pattern
             # {service}-{student_id}
             assert kali_container == 'kali-jump-exectest001'
             assert ubuntu1_container == 'ubuntu-target1-exectest001'
+            assert ubuntu2_container == 'ubuntu-target2-exectest001'
             
             print("  ✅ Container naming follows expected pattern")
             
@@ -1049,6 +1055,17 @@ class TestStudentExec(TestDockerIntegration):
                 print("  ✅ Ubuntu1 container exec test passed")
             except Exception as e:
                 print(f"  ⚠️  Ubuntu1 container exec test failed: {e}")
+
+            # Test Ubuntu2 container - check basic functionality
+            try:
+                result = self.lab_manager.run_command([
+                    "docker", "exec", "ubuntu-target2-exectest001", 
+                    "bash", "-c", "whoami && echo 'UBUNTU2_TEST_SUCCESS' && ls /"
+                ])
+                assert "UBUNTU2_TEST_SUCCESS" in result.stdout, "Ubuntu2 container command execution failed"
+                print("  ✅ Ubuntu2 container exec test passed")
+            except Exception as e:
+                print(f"  ⚠️  Ubuntu2 container exec test failed: {e}")
             
         finally:
             # Cleanup
@@ -1074,7 +1091,7 @@ class TestStudentExec(TestDockerIntegration):
             output = captured_output.getvalue()
             
             assert "❌ Invalid container type: invalid" in output
-            assert "Valid types: kali, ubuntu1" in output
+            assert "Valid types: kali, ubuntu1, ubuntu2" in output
             print("  ✅ Invalid container type properly rejected")
             
         finally:
@@ -1113,7 +1130,8 @@ class TestStudentExec(TestDockerIntegration):
             # Verify that the service mapping produces correct container names and test execution
             service_map = {
                 "kali": "kali-jump",
-                "ubuntu1": "ubuntu-target1"
+                "ubuntu1": "ubuntu-target1",
+                "ubuntu2": "ubuntu-target2"
             }
             
             for container_type, service_name in service_map.items():
@@ -1231,7 +1249,8 @@ class TestStudentExec(TestDockerIntegration):
             print("    Testing container name resolution...")
             service_mapping = {
                 'kali': 'kali-jump-functest001',
-                'ubuntu1': 'ubuntu-target1-functest001'
+                'ubuntu1': 'ubuntu-target1-functest001',
+                'ubuntu2': 'ubuntu-target2-functest001'
             }
             
             for container_type, expected_name in service_mapping.items():
