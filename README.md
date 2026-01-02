@@ -280,7 +280,7 @@ This project is licensed under the Unlicense (public domain). See [`LICENSE`](LI
 
 ### Third-Party Components
 
-- **ubuntu-target1/** and **ubuntu-target2/**: Docker implementation of Metasploitable3
+- **ubuntu-target1/**: Docker implementation of Metasploitable3
   - Docker implementation by heywoodlh: MIT License
   - Metasploitable3 by Rapid7: BSD-3-Clause License
   - See [`ubuntu-target1/LICENSE`](ubuntu-target1/LICENSE) for details
