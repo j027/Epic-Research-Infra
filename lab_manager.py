@@ -621,7 +621,7 @@ class LabManager:
                         if names:
                             for name in names.split(','):
                                 # Look for our service patterns
-                                if any(service in name for service in ['kali-jump-', 'ubuntu-target1-']):
+                                if any(service in name for service in ['kali-jump-', 'file-server-', 'build-server-']):
                                     # Extract student ID from the end of the name
                                     parts = name.split('-')
                                     if len(parts) >= 2:
@@ -847,11 +847,11 @@ class LabManager:
     
     def exec_into_container(self, student_id: str, container_type: str = "kali") -> None:
         """Execute into a student's container for investigation."""
-        # Map container types to compose service names
+        # Map container types to container name prefixes
         service_map = {
             "kali": "kali-jump",
-            "ubuntu1": "ubuntu-target1",
-            "ubuntu2": "ubuntu-target2"
+            "ubuntu1": "file-server",
+            "ubuntu2": "build-server"
         }
         
         if container_type not in service_map:

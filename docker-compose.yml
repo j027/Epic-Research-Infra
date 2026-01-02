@@ -68,7 +68,7 @@ services:
           pids: 128
 
 networks:
-  # Internal Network - Kali Jump Box and Ubuntu Target 1
+  # Internal Network - Kali Jump Box, Ubuntu Target 1, Ubuntu Target 2
   cyber-lab-internal:
     name: ${NETWORK_NAME:-cyber-lab-test}-internal
     driver: bridge

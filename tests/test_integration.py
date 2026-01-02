@@ -856,7 +856,7 @@ class TestNetworkIsolation(TestDockerIntegration):
         
         # Wait for containers to be ready
         containers_ready = {}
-        for container_type in ["kali-jump", "ubuntu-target1"]:
+        for container_type in ["kali-jump", "file-server"]:
             container_name = f"{container_type}-netconntest001"
             containers_ready[container_type] = self.wait_for_container_ready(container_name, max_wait=45)
             assert containers_ready[container_type], f"{container_name} failed to start"
@@ -878,7 +878,7 @@ class TestNetworkIsolation(TestDockerIntegration):
             
             # Check Ubuntu Target 1 (should be on internal network: 10.100.1.11)
             result = self.lab_manager.run_command([
-                "docker", "exec", "ubuntu-target1-netconntest001", 
+                "docker", "exec", "file-server-netconntest001", 
                 "ip", "addr", "show"
             ])
             target1_interfaces = result.stdout
@@ -898,7 +898,7 @@ class TestNetworkIsolation(TestDockerIntegration):
             
             # Target 1 should be able to reach Kali on internal network
             result = self.lab_manager.run_command([
-                "docker", "exec", "ubuntu-target1-netconntest001", 
+                "docker", "exec", "file-server-netconntest001", 
                 "ping", "-c", "2", "-W", "3", "10.100.1.10"
             ])
             assert result.returncode == 0, "Target1 should be able to ping Kali"
@@ -918,7 +918,7 @@ class TestNetworkIsolation(TestDockerIntegration):
             
             # Check Target1 routing - should know about internal network
             result = self.lab_manager.run_command([
-                "docker", "exec", "ubuntu-target1-netconntest001", 
+                "docker", "exec", "file-server-netconntest001", 
                 "ip", "route", "show"
             ])
             target1_routes = result.stdout
@@ -1010,9 +1010,9 @@ class TestStudentExec(TestDockerIntegration):
             for name in container_names:
                 if 'kali-jump-exectest001' in name:
                     kali_container = name
-                elif 'ubuntu-target1-exectest001' in name:
+                elif 'file-server-exectest001' in name:
                     ubuntu1_container = name
-                elif 'ubuntu-target2-exectest001' in name:
+                elif 'build-server-exectest001' in name:
                     ubuntu2_container = name
             
             assert kali_container, f"Kali container not found. Available: {container_names}"
@@ -1026,8 +1026,8 @@ class TestStudentExec(TestDockerIntegration):
             # Test that the container names follow the expected pattern
             # {service}-{student_id}
             assert kali_container == 'kali-jump-exectest001'
-            assert ubuntu1_container == 'ubuntu-target1-exectest001'
-            assert ubuntu2_container == 'ubuntu-target2-exectest001'
+            assert ubuntu1_container == 'file-server-exectest001'
+            assert ubuntu2_container == 'build-server-exectest001'
             
             print("  ✅ Container naming follows expected pattern")
             
@@ -1048,7 +1048,7 @@ class TestStudentExec(TestDockerIntegration):
             # Test Ubuntu1 container - check basic functionality
             try:
                 result = self.lab_manager.run_command([
-                    "docker", "exec", "ubuntu-target1-exectest001", 
+                    "docker", "exec", "file-server-exectest001", 
                     "bash", "-c", "whoami && echo 'UBUNTU1_TEST_SUCCESS' && ls /"
                 ])
                 assert "UBUNTU1_TEST_SUCCESS" in result.stdout, "Ubuntu1 container command execution failed"
@@ -1059,7 +1059,7 @@ class TestStudentExec(TestDockerIntegration):
             # Test Ubuntu2 container - check basic functionality
             try:
                 result = self.lab_manager.run_command([
-                    "docker", "exec", "ubuntu-target2-exectest001", 
+                    "docker", "exec", "build-server-exectest001", 
                     "bash", "-c", "whoami && echo 'UBUNTU2_TEST_SUCCESS' && ls /"
                 ])
                 assert "UBUNTU2_TEST_SUCCESS" in result.stdout, "Ubuntu2 container command execution failed"
@@ -1122,16 +1122,17 @@ class TestStudentExec(TestDockerIntegration):
             assert success, "Failed to start student containers"
             
             # Wait for containers to be ready
+            container_mapping = {"kali-jump": "kali-jump", "ubuntu-target1": "file-server"}
             for container_type in ["kali-jump", "ubuntu-target1"]:
-                container_name = f"{container_type}-maptest001"
+                container_name = f"{container_mapping[container_type]}-maptest001"
                 container_ready = self.wait_for_container_ready(container_name, max_wait=20)
                 assert container_ready, f"{container_name} failed to start"
             
             # Verify that the service mapping produces correct container names and test execution
             service_map = {
                 "kali": "kali-jump",
-                "ubuntu1": "ubuntu-target1",
-                "ubuntu2": "ubuntu-target2"
+                "ubuntu1": "file-server",
+                "ubuntu2": "build-server"
             }
             
             for container_type, service_name in service_map.items():
@@ -1187,8 +1188,9 @@ class TestStudentExec(TestDockerIntegration):
             assert success, "Failed to start student containers"
             
             # Wait for containers to be ready
+            container_mapping = {"kali-jump": "kali-jump", "ubuntu-target1": "file-server"}
             for container_type in ["kali-jump", "ubuntu-target1"]:
-                container_name = f"{container_type}-functest001"
+                container_name = f"{container_mapping[container_type]}-functest001"
                 container_ready = self.wait_for_container_ready(container_name, max_wait=20)
                 assert container_ready, f"{container_name} failed to start"
             
@@ -1229,7 +1231,7 @@ class TestStudentExec(TestDockerIntegration):
             try:
                 ubuntu1_container = None
                 for container in containers:
-                    if 'ubuntu-target1-functest001' in container.get('Names', ''):
+                    if 'file-server-functest001' in container.get('Names', ''):
                         ubuntu1_container = container.get('Names', '')
                         break
                 
@@ -1249,8 +1251,8 @@ class TestStudentExec(TestDockerIntegration):
             print("    Testing container name resolution...")
             service_mapping = {
                 'kali': 'kali-jump-functest001',
-                'ubuntu1': 'ubuntu-target1-functest001',
-                'ubuntu2': 'ubuntu-target2-functest001'
+                'ubuntu1': 'file-server-functest001',
+                'ubuntu2': 'build-server-functest001'
             }
             
             for container_type, expected_name in service_mapping.items():
@@ -1295,8 +1297,9 @@ class TestResourceLimits(TestDockerIntegration):
             
             # Wait for containers to be ready
             containers_ready = {}
+            container_mapping = {"kali-jump": "kali-jump", "ubuntu-target1": "file-server"}
             for container_type in ["kali-jump", "ubuntu-target1"]:
-                container_name = f"{container_type}-forkbombtest001"
+                container_name = f"{container_mapping[container_type]}-forkbombtest001"
                 containers_ready[container_type] = self.wait_for_container_ready(container_name, max_wait=45)
                 assert containers_ready[container_type], f"{container_name} failed to start"
             
@@ -1305,7 +1308,7 @@ class TestResourceLimits(TestDockerIntegration):
             # Test fork bomb protection in each container
             containers_to_test = [
                 ("kali-jump-forkbombtest001", "Kali Jump Box"),
-                ("ubuntu-target1-forkbombtest001", "Ubuntu Target 1")
+                ("file-server-forkbombtest001", "Ubuntu Target 1")
             ]
             
             for container_name, container_label in containers_to_test:
