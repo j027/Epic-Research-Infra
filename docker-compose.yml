@@ -29,7 +29,7 @@ services:
     image: epic-research-infra-ubuntu-target1:latest
     stop_grace_period: 1s
     build: ./ubuntu-target1
-    container_name: ubuntu-target1-${STUDENT_ID:-test}
+    container_name: file-server-${STUDENT_ID:-test}
     hostname: file-server
     networks:
       cyber-lab-internal:
@@ -50,7 +50,7 @@ services:
     image: epic-research-infra-ubuntu-target2:latest
     stop_grace_period: 1s
     build: ./ubuntu-target2
-    container_name: ubuntu-target2-${STUDENT_ID:-test}
+    container_name: build-server-${STUDENT_ID:-test}
     hostname: build-server
     networks:
       cyber-lab-internal:
