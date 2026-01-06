@@ -14,7 +14,7 @@ RUN useradd -m -s /bin/bash distcc && \
     chmod 0440 /etc/sudoers.d/distcc
 
 RUN useradd -m -s /bin/bash labuser && \
-    echo 'labuser:defendLab!@password' | chpasswd && \
+    echo 'labuser:defendlab | chpasswd && \
     usermod -aG sudo labuser
 
 # configure ssh
