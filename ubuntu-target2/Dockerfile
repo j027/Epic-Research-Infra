@@ -2,6 +2,7 @@ FROM ubuntu:24.04
 
 RUN apt-get update
 RUN apt-get install -y openssh-server distcc supervisor build-essential sudo iproute2 man-db 
+RUN yes | unminimize
 RUN rm -rf /var/lib/apt/lists/*
 
 # copy supervisor configuration files
