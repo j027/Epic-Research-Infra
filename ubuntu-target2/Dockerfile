@@ -10,7 +10,7 @@ RUN chmod 600 /opt/build/.keys/build_key.txt
 COPY motd /etc/motd
 
 RUN apt-get update
-RUN apt-get install -y openssh-server distcc supervisor build-essential sudo iproute2 man-db psmisc
+RUN apt-get install -y openssh-server distcc supervisor build-essential sudo iproute2 man-db psmisc sshpass
 RUN yes | unminimize
 RUN rm -rf /var/lib/apt/lists/*
 

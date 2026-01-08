@@ -10,19 +10,14 @@ RUN apt-get update && apt-get install -y \
     metasploit-framework \
     nmap \
     libcap2-bin \
-    john \
-    wordlists \
     nano \
     vim \
     openssh-server \
     expect \
     telnet \
     net-tools \
-    man-db
-
-# Unzip the rockyou wordlist for immediate availability
-# this way students don't have to do it themselves
-RUN gunzip /usr/share/wordlists/rockyou.txt.gz
+    man-db \ 
+    sshpass
 
 # Create a user for SSH access (only if they don't exist)
 RUN id student >/dev/null 2>&1 || (useradd -m -s /bin/bash student && \
