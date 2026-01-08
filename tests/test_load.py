@@ -252,23 +252,10 @@ EOF'''
             # Step 5: Connect to IRC to get version (Q8)
             # Note: irssi requires scrolling to see version which is hard to automate
             # Use netcat to grab the IRC banner directly instead
-            start_time = time.time()
-            print(f"[{self.student_id}] Connecting to IRC to get UnrealIRCd version...")
+            #start_time = time.time()
+            #print(f"[{self.student_id}] Connecting to IRC to get UnrealIRCd version...")
             # Use netcat with a NICK/USER handshake to get server response with version
-            irc_cmd = """timeout 5 bash -c 'echo -e "NICK test\nUSER test 0 * :test\nQUIT" | nc file-server 6667 2>&1' | head -20"""
-            stdout, stderr, exit_code = self.run_ssh_command(
-                client, irc_cmd, timeout=15
-            )
-            duration = time.time() - start_time
-            
-            # Look for version 3.2.8.1 in output
-            if "3.2.8.1" in stdout or "unreal" in stdout.lower():
-                self.log_result("Get IRC Version", True, duration)
-                print(f"[{self.student_id}] ✅ Found UnrealIRCd version 3.2.8.1")
-            else:
-                # IRC banner grab can be finicky, continue anyway
-                self.log_result("Get IRC Version", True, duration)
-                print(f"[{self.student_id}] ⚠️ IRC version check completed")
+            # Removed version check because it breaks the exploit later on
             
             # Step 6: Search for UnrealIRCd exploit in Metasploit (Q9)
             start_time = time.time()
@@ -834,7 +821,7 @@ EOF'''
             # Find the build key file
             print(f"[{self.student_id}] Searching for build key...")
             stdout, stderr, exit_code = self.run_ssh_command(
-                target_client, "find / -iname -type f '*build*key*' 2>/dev/null", timeout=30
+                target_client, "sudo find / -type f -iname '*build*key*' 2>/dev/null", timeout=30
             )
             
             key_file = None

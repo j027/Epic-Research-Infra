@@ -17,7 +17,8 @@ RUN apt-get update && apt-get install -y \
     telnet \
     net-tools \
     man-db \ 
-    sshpass
+    sshpass \
+    netcat-openbsd
 
 # Create a user for SSH access (only if they don't exist)
 RUN id student >/dev/null 2>&1 || (useradd -m -s /bin/bash student && \
