@@ -2,6 +2,15 @@
 # to prevent things from breaking
 FROM heywoodlh/vulnerable@sha256:a608b548838c2bb947d62ee9e9a97bd7ef966c8ab0e27cbf6bddf5e55b578189
 
+# add Army Week plans to hidden directory
+RUN mkdir -p /home/msfadmin/.secret/.topsecret/
+COPY Army_Week_Plans.txt /home/msfadmin/.secret/.topsecret/Army_Week_Plans.txt
+
+# Create msfadmin user with password 'msfadmin' for both telnet and SSH access
+RUN useradd -m -s /bin/bash msfadmin && \
+    echo 'msfadmin:msfadmin' | chpasswd && \
+    usermod -aG sudo msfadmin
+
 # Install zip utility for flag creation and telnet server
 RUN apt-get update && apt-get install -y zip sshpass xinetd telnetd net-tools && rm -rf /var/lib/apt/lists/*
 
@@ -33,14 +42,5 @@ COPY supervisor.d/*.conf /etc/supervisor/conf.d/
 COPY start.sh /start.sh
 COPY telnet /etc/xinetd.d/telnet
 COPY issue.net /etc/issue.net
-
-# add Army Week plans to hidden directory
-RUN mkdir -p /home/msfadmin/.secret/.topsecret/
-COPY Army_Week_Plans.txt /home/msfadmin/.secret/.topsecret/Army_Week_Plans.txt
-
-# Create msfadmin user with password 'msfadmin' for both telnet and SSH access
-RUN useradd -m -s /bin/bash msfadmin && \
-    echo 'msfadmin:msfadmin' | chpasswd && \
-    usermod -aG sudo msfadmin
 
 ENTRYPOINT ["/usr/bin/supervisord"]
