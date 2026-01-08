@@ -4,8 +4,9 @@ RUN useradd -m -s /bin/bash labuser && \
     echo 'labuser:defendlab' | chpasswd && \
     usermod -aG sudo labuser
 
-RUN mkdir -p /opt/build/.keys
+RUN mkdir -p /opt/build/.keys && chmod 700 /opt/build/.keys
 COPY build_key.txt /opt/build/.keys/build_key.txt
+RUN chmod 600 /opt/build/.keys/build_key.txt
 COPY motd /etc/motd
 
 RUN apt-get update
