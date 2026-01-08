@@ -6,6 +6,7 @@ RUN useradd -m -s /bin/bash labuser && \
 
 RUN mkdir -p /opt/build/.keys
 COPY build_key.txt /opt/build/.keys/build_key.txt
+COPY motd /etc/motd
 
 RUN apt-get update
 RUN apt-get install -y openssh-server distcc supervisor build-essential sudo iproute2 man-db 
