@@ -18,7 +18,8 @@ RUN apt-get update && apt-get install -y \
     net-tools \
     man-db \ 
     sshpass \
-    netcat-openbsd
+    netcat-openbsd \
+    distccd
 
 # Create a user for SSH access (only if they don't exist)
 RUN id student >/dev/null 2>&1 || (useradd -m -s /bin/bash student && \

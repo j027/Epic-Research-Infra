@@ -13,22 +13,22 @@ The Lab Manager provisions isolated per-student lab environments (jump box + tar
 External Network → Host: <assigned SSH port>
                        │
                        ▼
-               Kali Jump Box        (10.<subnet>.1.10)
+               Kali Jump Box        (10.<subnet>.42.10)
                      │
                      │
        ┌─────────────┴─────────────┐
        │  Internal Network         │
-       │  (10.<subnet>.1.0/24)     │
+       │  (10.<subnet>.42.0/24)    │
        │                           │
        │      Ubuntu Target 1      │
-       │      (10.<subnet>.1.11)   │
+       │      (10.<subnet>.42.11)  │
        │                           │
        │      Ubuntu Target 2      │
-       └──────(10.<subnet>.1.231)──┘
+       └──────(10.<subnet>.42.231)─┘
 ```
 
 **Network Architecture:**
-- **Internal Network** (`10.<subnet>.1.0/24`): Contains Kali Jump Box + Ubuntu Targets
+- **Internal Network** (`10.<subnet>.42.0/24`): Contains Kali Jump Box + Ubuntu Targets
 - Each student has their own isolated network preventing cross-student access
 - **Target 1** (`file-server`): Standard target at `.11`
 - **Target 2** (`build-server`): Hidden target at `.231` (intended for discovery via scanning)

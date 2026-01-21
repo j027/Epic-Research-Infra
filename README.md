@@ -139,11 +139,11 @@ When you log in, you'll see network information including target IP addresses:
 ==========================================
 
 Network Information:
-  Internal Network: 10.0.1.0/24 (Gateway: 10.0.1.1)
+  Internal Network: 10.172.42.0/24 (Gateway: 10.172.42.1)
 
 Accessible Targets:
-  Kali Jump Box:   kali-jump      (10.0.1.10)
-  File Server:     file-server    (10.0.1.11)
+  Kali Jump Box:   kali-jump      (10.172.42.10)
+  File Server:     file-server    (10.172.42.11)
   ???              ???            (Scan to find me!)
 ```
 
@@ -161,12 +161,12 @@ nmap kali-jump
 
 # Using IP address
 # file-server
-ping 10.0.1.11
-nmap 10.0.1.11
+ping 10.172.42.11
+nmap 10.172.42.11
 
 # kali-jump
-ping 10.0.1.10
-nmap 10.0.1.10
+ping 10.172.42.10
+nmap 10.172.42.10
 ```
 
 > 💡 **Tip:** Hostnames usually work and are easier to type than IP addresses.
@@ -181,21 +181,23 @@ Your Computer
      │ SSH (port 2222)
      ▼
 ┌─────────────────────────────────────┐
-│  Kali Jump Box (10.0.1.10)          │
+│  Kali Jump Box (10.172.42.10)       │
 │  - Your attack platform             │
 │  - nmap, metasploit, john, etc.     │
 └──────────────┬──────────────────────┘
                │
-    Internal Network (10.0.1.0/24)
+    Internal Network (10.172.42.0/24)
                │
-┌──────────────┴──────────────────────┐
-│  File Server (10.0.1.11)            │
-│  - Vulnerable services              │
-│  - Your practice target             │
-│                                     │
-│  [?] Hidden Target                  │
-│  - Scan the network to find it!     │
-└─────────────────────────────────────┘
+       ┌───────┴───────┐
+       │               │
+       ▼               ▼
+┌─────────────┐ ┌─────────────────┐
+│ File Server │ │ [?] Hidden      │
+│ (10.172.42. │ │ Target          │
+│  11)        │ │ - Scan to find! │
+│ - Vulnerable│ │                 │
+│   services  │ │                 │
+└─────────────┘ └─────────────────┘
 ```
 
 ---
