@@ -5,6 +5,7 @@ A Docker-based cybersecurity training lab with a Kali Linux jump box and vulnera
 ---
 
 ## Quick Start
+> If viewing this on GitHub, scroll down to read the full README before starting.
 
 1. Install [Git](#1-install-git) and [Docker Desktop](#2-install-docker-desktop)
 2. Clone and start the lab:
@@ -14,7 +15,7 @@ A Docker-based cybersecurity training lab with a Kali Linux jump box and vulnera
    docker compose build
    docker compose up -d
    ```
-3. Connect:
+3. Connect to the Kali jump box:
    ```bash
    ssh student@127.0.0.1 -p 2222
    ```
@@ -105,6 +106,8 @@ docker compose up -d
 ```
 This starts both containers in the background.
 
+> This environment is reused across multiple labs; you do not need to reinstall it unless instructed.
+
 ### Stop the Lab (Pause)
 ```bash
 docker compose stop
@@ -113,7 +116,7 @@ Stops containers but keeps them. You can resume with `docker compose start`.
 
 > ⚠️ **Note:** Any running processes (shells, scans, etc.) will be terminated when you stop.
 
-### Shut Down the Lab (Reset)
+### Shut Down the Lab (Full Reset)
 ```bash
 docker compose down
 ```
@@ -144,7 +147,7 @@ When you log in, you'll see network information including target IP addresses:
 Network Information:
   Internal Network: 10.0.1.0/24 (Gateway: 10.0.1.1)
 
-Accessible Hosts:
+Accessible Targets:
   Kali Jump Box:   kali-jump      (10.0.1.10)
   File Server:     file-server    (10.0.1.11)
   ???              ???            (Scan to find me!)
@@ -260,7 +263,7 @@ docker builder prune
 
 Since the lab runs locally on your own machine, the default password is fine—only you can access it.
 
-If you want to change it anyways, use the command
+If you want to change it anyway, use the command
 ```bash
 passwd
 ```
