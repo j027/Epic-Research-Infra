@@ -41,6 +41,7 @@ RUN mkdir -p /var/run/sshd && \
     sed -i 's/#PasswordAuthentication .*/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
     sed -i 's/#PubkeyAuthentication .*/PubkeyAuthentication yes/' /etc/ssh/sshd_config && \
     sed -i 's/#Port .*/Port 22/' /etc/ssh/sshd_config && \
+    sed -i 's/^AcceptEnv.*/#AcceptEnv LANG LC_*/' /etc/ssh/sshd_config && \
     ssh-keygen -A
 
 # Copy and setup the dynamic MOTD script
