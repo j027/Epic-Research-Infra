@@ -162,6 +162,7 @@ Creates (or reuses) per‑student networks & containers. Assigns any missing por
 ./lab_manager.py class down students.csv
 ```
 > ⚠️ **Destructive:** Removes containers & ephemeral state. Any in‑container changes are lost.
+> However, this is safe to run between labs since there's no persistent data to save.
 
 ### 5.4 Individual Student Lifecycle
 | Action | Command |
