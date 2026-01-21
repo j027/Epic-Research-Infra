@@ -253,6 +253,8 @@ docker builder prune
 
 > ⚠️ **Warning:** Avoid `docker system prune` unless you understand it—this removes ALL unused containers, networks, and images across your entire Docker installation, not just this lab.
 
+You may also delete the `Epic-Research-Infra` directory after removing the containers and images.
+
 ---
 
 ## 9. Password Security
