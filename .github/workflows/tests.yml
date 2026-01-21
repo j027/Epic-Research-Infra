@@ -11,12 +11,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, ubuntu-24.04-arm]
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-13]
         include:
           - os: ubuntu-latest
             arch: x64
           - os: ubuntu-24.04-arm
             arch: arm64
+          - os: macos-13
+            arch: x64
     
     steps:
     - name: Checkout code
@@ -30,7 +32,8 @@ jobs:
       with:
         platforms: linux/amd64,linux/arm64
 
-    - name: Install Docker and Docker Compose
+    - name: Install Docker and Docker Compose (Linux)
+      if: runner.os == 'Linux'
       run: |
         # Update package list
         sudo apt-get update
@@ -54,6 +57,14 @@ jobs:
         docker --version
         docker compose version
 
+    - name: Setup Docker on macOS
+      if: runner.os == 'macOS'
+      uses: douglascamata/setup-docker-macos-action@v1.0.1
+      with:
+        lima: v1.2.1
+        colima: v0.9.1
+        colima-network-address: false
+
     - name: Set up Python virtual environment
       run: |
         python3 -m venv venv
@@ -67,7 +78,11 @@ jobs:
 
     - name: Build Docker images
       run: |
-        sudo docker compose build
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          sudo docker compose build
+        else
+          docker compose build
+        fi
 
     - name: Run tests
       run: |
@@ -77,5 +92,10 @@ jobs:
     - name: Cleanup Docker containers
       if: always()
       run: |
-        sudo docker compose down -v --remove-orphans
-        sudo docker system prune -af
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          sudo docker compose down -v --remove-orphans
+          sudo docker system prune -af
+        else
+          docker compose down -v --remove-orphans
+          docker system prune -af
+        fi
