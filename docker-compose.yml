@@ -7,7 +7,7 @@ services:
     hostname: kali-jump
     networks:
       cyber-lab-internal:
-        ipv4_address: 10.${SUBNET_ID:-0}.1.10
+        ipv4_address: 10.${SUBNET_ID:-172}.42.10
     ports:
       - "${SSH_BIND:-127.0.0.1}:${SSH_PORT:-2222}:22"  # External SSH access (localhost by default, 0.0.0.0 for lab manager)
     cap_add:
@@ -34,7 +34,7 @@ services:
     hostname: file-server
     networks:
       cyber-lab-internal:
-        ipv4_address: 10.${SUBNET_ID:-0}.1.11
+        ipv4_address: 10.${SUBNET_ID:-172}.42.11
     labels:
       - "lab.student.id=${STUDENT_ID:-test}"
       - "lab.student.name=${STUDENT_NAME:-Test User}"
@@ -56,7 +56,7 @@ services:
     networks:
       cyber-lab-internal:
         # this target uses a different nonconsecutive IP to encourage students to scan the network
-        ipv4_address: 10.${SUBNET_ID:-0}.1.231
+        ipv4_address: 10.${SUBNET_ID:-172}.42.231
     labels:
       - "lab.student.id=${STUDENT_ID:-test}"
       - "lab.student.name=${STUDENT_NAME:-Test User}"
