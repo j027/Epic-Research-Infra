@@ -28,6 +28,8 @@ A Docker-based cybersecurity training lab with a Kali Linux jump box and vulnera
 - **Git** – to clone this repository
 - **Docker Desktop** – runs the lab containers
 
+> **Architecture note:** This lab targets x86_64/amd64. On ARM systems (Apple Silicon, Windows on ARM), some containers may run under x86_64 emulation and may be slower or fail. If you hit issues, use an amd64 machine.
+
 ---
 
 ## 1. Install Git
