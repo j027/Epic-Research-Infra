@@ -19,7 +19,17 @@ RUN apt-get update && apt-get install -y \
     man-db \ 
     sshpass \
     netcat-openbsd \
-    distcc
+    distcc \
+    locales
+
+# Configure locale to fix macOS SSH UTF-8 warnings
+RUN sed -i 's/^# *en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
+    locale-gen && \
+    update-locale LANG=en_US.UTF-8
+
+ENV LANG=en_US.UTF-8 \
+    LANGUAGE=en_US:en \
+    LC_ALL=en_US.UTF-8
 
 # Create a user for SSH access (only if they don't exist)
 RUN id student >/dev/null 2>&1 || (useradd -m -s /bin/bash student && \
