@@ -108,14 +108,6 @@ This starts both containers in the background.
 
 > This environment is reused across multiple labs; you do not need to reinstall it unless instructed.
 
-### Stop the Lab (Pause)
-```bash
-docker compose stop
-```
-Stops containers but keeps them. You can resume with `docker compose start`.
-
-> ⚠️ **Note:** Any running processes (shells, scans, etc.) will be terminated when you stop.
-
 ### Shut Down the Lab (Full Reset)
 ```bash
 docker compose down
