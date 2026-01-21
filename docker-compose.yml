@@ -27,6 +27,7 @@ services:
   # Ubuntu Target 1
   ubuntu-target1:
     image: epic-research-infra-ubuntu-target1:latest
+    platform: linux/amd64
     stop_grace_period: 1s
     build: ./ubuntu-target1
     container_name: file-server-${STUDENT_ID:-test}
