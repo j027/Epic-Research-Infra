@@ -38,7 +38,7 @@ External Network → Host: <assigned SSH port>
 | ------- | ----------- |
 | Student ID | Unique identifier from the CSV (e.g. `student001`) used in naming & hashing. |
 | Assigned Port | Unique host SSH port (≥ 2222) mapped to the student's Kali container. |
-| Subnet ID | Deterministic (collision‑avoiding) value 1–254 used for the internal network (`10.<subnet>.1.0/24`). |
+| Subnet ID | Deterministic (collision‑avoiding) value 1–254 used for the internal network (`10.<subnet>.42.0/24`). |
 | Project Name | Docker Compose project prefix: `cyber-lab-<student_id>`. |
 | CSV | Single source of truth for roster + (after first run) assigned ports/subnets. |
 

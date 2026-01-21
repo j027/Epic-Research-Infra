@@ -286,15 +286,15 @@ EOF'''
             
             our_ip = stdout.strip()
             if our_ip:
-                # Extract subnet from our IP (e.g., 10.42.1.10 -> 10.42.1)
+                # Extract subnet from our IP (e.g., 10.42.42.10 -> 10.42.42)
                 subnet_parts = our_ip.rsplit('.', 1)
                 if len(subnet_parts) == 2:
                     subnet = subnet_parts[0] + ".0/24"
                     print(f"[{self.student_id}] Detected subnet: {subnet}")
                 else:
-                    subnet = "10.0.1.0/24"  # Fallback
+                    subnet = "10.172.42.0/24"  # Fallback
             else:
-                subnet = "10.0.1.0/24"  # Fallback
+                subnet = "10.172.42.0/24"  # Fallback
             
             # Scan the subnet with nmap ping scan
             print(f"[{self.student_id}] Scanning network to discover additional hosts...")

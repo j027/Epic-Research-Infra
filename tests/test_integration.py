@@ -867,23 +867,23 @@ class TestNetworkIsolation(TestDockerIntegration):
             # Test 1: Verify network interfaces and IP addresses
             print("  🔍 Verifying network configuration...")
             
-            # Check Kali Jump Box (should be on internal network: 10.100.1.10)
+            # Check Kali Jump Box (should be on internal network: 10.100.42.10)
             result = self.lab_manager.run_command([
                 "docker", "exec", "kali-jump-netconntest001", 
                 "ip", "addr", "show"
             ])
             kali_interfaces = result.stdout
-            assert "10.100.1.10" in kali_interfaces, "Kali should have internal network IP 10.100.1.10"
-            print("    ✅ Kali Jump Box: On internal network (10.100.1.10)")
+            assert "10.100.42.10" in kali_interfaces, "Kali should have internal network IP 10.100.42.10"
+            print("    ✅ Kali Jump Box: On internal network (10.100.42.10)")
             
-            # Check Ubuntu Target 1 (should be on internal network: 10.100.1.11)
+            # Check Ubuntu Target 1 (should be on internal network: 10.100.42.11)
             result = self.lab_manager.run_command([
                 "docker", "exec", "file-server-netconntest001", 
                 "ip", "addr", "show"
             ])
             target1_interfaces = result.stdout
-            assert "10.100.1.11" in target1_interfaces, "Target1 should have internal network IP 10.100.1.11"
-            print("    ✅ Ubuntu Target 1: On internal network (10.100.1.11)")
+            assert "10.100.42.11" in target1_interfaces, "Target1 should have internal network IP 10.100.42.11"
+            print("    ✅ Ubuntu Target 1: On internal network (10.100.42.11)")
             
             # Test 2: Verify connectivity between containers
             print("  🔗 Testing connectivity...")
@@ -891,7 +891,7 @@ class TestNetworkIsolation(TestDockerIntegration):
             # Kali should be able to reach Ubuntu Target 1 on internal network
             result = self.lab_manager.run_command([
                 "docker", "exec", "kali-jump-netconntest001", 
-                "ping", "-c", "2", "-W", "3", "10.100.1.11"
+                "ping", "-c", "2", "-W", "3", "10.100.42.11"
             ])
             assert result.returncode == 0, "Kali should be able to ping Ubuntu Target 1"
             print("    ✅ Kali → Ubuntu Target 1: Connected")
@@ -899,7 +899,7 @@ class TestNetworkIsolation(TestDockerIntegration):
             # Target 1 should be able to reach Kali on internal network
             result = self.lab_manager.run_command([
                 "docker", "exec", "file-server-netconntest001", 
-                "ping", "-c", "2", "-W", "3", "10.100.1.10"
+                "ping", "-c", "2", "-W", "3", "10.100.42.10"
             ])
             assert result.returncode == 0, "Target1 should be able to ping Kali"
             print("    ✅ Ubuntu Target 1 → Kali: Connected")
@@ -913,7 +913,7 @@ class TestNetworkIsolation(TestDockerIntegration):
                 "ip", "route", "show"
             ])
             kali_routes = result.stdout
-            assert "10.100.1.0/24" in kali_routes, "Kali should have route to internal network"
+            assert "10.100.42.0/24" in kali_routes, "Kali should have route to internal network"
             print("    ✅ Kali routing: Internal network accessible")
             
             # Check Target1 routing - should know about internal network
@@ -922,7 +922,7 @@ class TestNetworkIsolation(TestDockerIntegration):
                 "ip", "route", "show"
             ])
             target1_routes = result.stdout
-            assert "10.100.1.0/24" in target1_routes, "Target1 should have route to internal network"
+            assert "10.100.42.0/24" in target1_routes, "Target1 should have route to internal network"
             print("    ✅ Ubuntu Target 1 routing: Internal network accessible")
             
             # Test 4: Test network discovery simulation
@@ -932,14 +932,14 @@ class TestNetworkIsolation(TestDockerIntegration):
             try:
                 result = self.lab_manager.run_command([
                     "docker", "exec", "kali-jump-netconntest001", 
-                    "bash", "-c", "for i in {10..15}; do ping -c 1 -W 1 10.100.1.$i > /dev/null 2>&1 && echo 'Host 10.100.1.'$i' is up'; done"
+                    "bash", "-c", "for i in {10..15}; do ping -c 1 -W 1 10.100.42.$i > /dev/null 2>&1 && echo 'Host 10.100.42.'$i' is up'; done"
                 ])
             except subprocess.CalledProcessError as e:
                 # Network discovery commands may return non-zero exit codes when some hosts are unreachable
                 # The important thing is that we get the expected output
                 result = e
                 result.stdout = e.stdout
-            assert "Host 10.100.1.11 is up" in result.stdout, "Should discover Ubuntu Target 1"
+            assert "Host 10.100.42.11 is up" in result.stdout, "Should discover Ubuntu Target 1"
             print("    ✅ Internal network discovery: Ubuntu Target 1 discoverable from Kali")
             
             print("  🎉 All network connectivity tests passed!")
