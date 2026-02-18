@@ -260,7 +260,7 @@ To reclaim disk space after decommissioning the lab:
 
 ### Remove Lab Images
 ```bash
-sudo docker rmi epic-research-infra-kali-jump:latest epic-research-infra-ubuntu-target1:latest
+sudo docker rmi epic-research-infra-kali-jump:latest epic-research-infra-ubuntu-target1:latest epic-research-infra-ubuntu-target2:latest
 ```
 
 ### Clear Build Cache
