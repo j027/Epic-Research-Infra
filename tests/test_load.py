@@ -106,6 +106,41 @@ class StudentSimulator:
         # This should never be reached due to the raise above, but added for type safety
         raise Exception("Failed to establish SSH connection")
             
+    def run_nmap_scan_with_retry(self, client: paramiko.SSHClient, command: str,
+                                  expected_ports: List[str], step_name: str,
+                                  max_retries: int = 3, timeout: int = 300,
+                                  wait_between: int = 15) -> Tuple[bool, str, float]:
+        """Run an nmap scan with retry logic for resilience under emulation.
+        
+        Returns (success, stdout, total_duration)
+        """
+        total_start = time.time()
+        for attempt in range(1, max_retries + 1):
+            start_time = time.time()
+            print(f"[{self.student_id}] {step_name} attempt {attempt}/{max_retries}...")
+            stdout, stderr, exit_code = self.run_ssh_command(client, command, timeout=timeout)
+            duration = time.time() - start_time
+
+            if exit_code == 0 and all(port in stdout for port in expected_ports):
+                total_duration = time.time() - total_start
+                self.log_result(step_name, True, total_duration)
+                return True, stdout, total_duration
+
+            # Log what we did find to aid debugging
+            found = [p for p in expected_ports if p in stdout]
+            missing = [p for p in expected_ports if p not in stdout]
+            print(f"[{self.student_id}] Attempt {attempt} found {found}, missing {missing}")
+
+            if attempt < max_retries:
+                print(f"[{self.student_id}] Waiting {wait_between}s before retry...")
+                time.sleep(wait_between)
+
+        # All retries exhausted
+        total_duration = time.time() - total_start
+        self.log_result(step_name, False, total_duration,
+                        f"Missing expected ports after {max_retries} attempts: {missing}")
+        return False, stdout, total_duration
+
     def run_ssh_command(self, client: paramiko.SSHClient, command: str, 
                        input_data: Optional[str] = None, timeout: int = 60) -> Tuple[str, str, int]:
         """Run command via SSH and return stdout, stderr, exit_code"""
@@ -199,21 +234,20 @@ EOF'''
                 return False
             
             # Step 2: Full TCP port scan (Q6) - nmap -p-
-            start_time = time.time()
             print(f"[{self.student_id}] Running full TCP port scan (nmap -p-)...")
-            stdout, stderr, exit_code = self.run_ssh_command(
-                client, "nmap -p- file-server", timeout=300
+            success, stdout, duration = self.run_nmap_scan_with_retry(
+                client,
+                command="nmap -p- file-server",
+                expected_ports=["21/tcp", "80/tcp"],
+                step_name="Full Port Scan",
+                max_retries=3,
+                timeout=300,
+                wait_between=15
             )
-            duration = time.time() - start_time
-            
-            # Verify we found expected ports (21, 80, 8067, etc.)
-            if exit_code == 0 and "21/tcp" in stdout and "80/tcp" in stdout:
-                self.log_result("Full Port Scan", True, duration)
-                # Check for expected port range
+            if success:
                 if "8067" in stdout:
                     print(f"[{self.student_id}] ✅ Found expected port range (21-8067)")
             else:
-                self.log_result("Full Port Scan", False, duration, f"Missing expected ports: {stderr}")
                 client.close()
                 return False
             
@@ -322,19 +356,19 @@ EOF'''
                     return False
             
             # Step 8: Full port scan on build-server (Q11)
-            start_time = time.time()
             print(f"[{self.student_id}] Running full port scan on build-server...")
-            stdout, stderr, exit_code = self.run_ssh_command(
-                client, "nmap -p- build-server", timeout=300
+            success, stdout, duration = self.run_nmap_scan_with_retry(
+                client,
+                command="nmap -p- build-server",
+                expected_ports=["22/tcp", "3632/tcp"],
+                step_name="Build-Server Port Scan",
+                max_retries=3,
+                timeout=300,
+                wait_between=15
             )
-            duration = time.time() - start_time
-            
-            # Should find ports 22 (SSH) and 3632 (distcc)
-            if exit_code == 0 and "22/tcp" in stdout and "3632/tcp" in stdout:
-                self.log_result("Build-Server Port Scan", True, duration)
+            if success:
                 print(f"[{self.student_id}] ✅ Found ports 22 and 3632 on build-server")
             else:
-                self.log_result("Build-Server Port Scan", False, duration, f"Expected ports not found: {stdout}")
                 client.close()
                 return False
             
