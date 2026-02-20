@@ -14,6 +14,8 @@ import subprocess
 import os
 import json
 import hashlib
+import secrets
+import string
 import time
 from typing import List, Dict, Optional, Set, TypedDict
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -24,20 +26,47 @@ class StudentData(TypedDict):
     student_name: str
     port: int
     subnet_id: Optional[int]
+    password: Optional[str]
 
 
 class LabManager:
-    def __init__(self, compose_file: str = "docker-compose.yml", use_sudo: bool = True):
-        """Initialize the Lab Manager with the docker-compose file path."""
+    def __init__(self, compose_file: str = "docker-compose.yml", use_sudo: Optional[bool] = None):
+        """Initialize the Lab Manager with the docker-compose file path.
+        
+        Args:
+            compose_file: Path to the docker-compose file.
+            use_sudo: Whether to use sudo for docker commands.
+                      None = auto-detect, True = force sudo, False = never sudo.
+        """
         self.compose_file = compose_file
-        self.use_sudo = use_sudo
+        if use_sudo is None:
+            self.use_sudo = self._detect_sudo_needed()
+        else:
+            self.use_sudo = use_sudo
+    
+    @staticmethod
+    def _detect_sudo_needed() -> bool:
+        """Auto-detect whether sudo is required for docker commands.
+        
+        Tries running 'docker info' without sudo. If it succeeds, sudo is not needed
+        (user is root or in the docker group). Otherwise, sudo is required.
+        """
+        try:
+            result = subprocess.run(
+                ["docker", "info"],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            return result.returncode != 0
+        except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
+            # If docker command fails entirely, assume sudo is needed
+            return True
     
     def _confirm_parallel_execution(self, operation_name: str) -> bool:
         """Helper function to confirm parallel execution with user."""
         print(f"\n⚠️  PARALLEL EXECUTION MODE")
         print(f"   Docker containers will be {operation_name} simultaneously.")
-        print("   Your screen may show interleaved output from multiple operations.")
-        print("   This is normal and expected behavior.")
         response = input("\n   Continue with parallel execution? (y/N): ").strip().lower()
         if response not in ['y', 'yes']:
             print("   Switching to sequential execution...")
@@ -89,7 +118,7 @@ class LabManager:
         """Build all Docker images defined in the compose file."""
         print("Building Docker images...")
         try:
-            self.run_command(["docker", "compose", "build"], capture_output=False)
+            self.run_command(["docker", "compose", "--progress=plain", "build"], capture_output=False)
             print("✅ Images built successfully!")
             return True
         except subprocess.CalledProcessError:
@@ -135,7 +164,38 @@ class LabManager:
         
         return subnet_id
     
-    def get_student_env(self, student_id: str, student_name: str, port: int, subnet_id: Optional[int] = None, csv_file: str = "students.csv") -> Dict[str, str]:
+    # EFF large wordlist for diceware-style passwords (7776 words)
+    # Loaded once from eff_large_wordlist.txt (tab-separated: dice_roll\tword)
+    _WORDLIST_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "eff_large_wordlist.txt")
+    WORD_LIST: list[str] = []
+
+    @classmethod
+    def _load_word_list(cls) -> list[str]:
+        """Load the EFF large wordlist from file. Cached after first call."""
+        if cls.WORD_LIST:
+            return cls.WORD_LIST
+        try:
+            with open(cls._WORDLIST_PATH, 'r') as f:
+                cls.WORD_LIST = [line.strip().split('\t')[1] for line in f if '\t' in line]
+        except FileNotFoundError:
+            raise FileNotFoundError(
+                f"EFF wordlist not found at {cls._WORDLIST_PATH}. "
+                "Download from https://www.eff.org/files/2016/07/18/eff_large_wordlist.txt"
+            )
+        return cls.WORD_LIST
+
+    @staticmethod
+    def generate_password(num_words: int = 4) -> str:
+        """Generate an easy-to-type diceware-style password.
+        
+        Uses the EFF large wordlist (7776 words) for high entropy.
+        Combines random words with hyphens for readability.
+        Example: 'crescent-calamity-headband-universe'
+        """
+        word_list = LabManager._load_word_list()
+        return '-'.join(secrets.choice(word_list) for _ in range(num_words))
+
+    def get_student_env(self, student_id: str, student_name: str, port: int, subnet_id: Optional[int] = None, password: Optional[str] = None, csv_file: str = "students.csv") -> Dict[str, str]:
         """Generate environment variables for a specific student."""
         # Use provided subnet_id if available, otherwise calculate from student ID
         if subnet_id is None:
@@ -143,7 +203,7 @@ class LabManager:
             used_subnets = self.get_used_subnets(csv_file)
             subnet_id = self.calculate_subnet_id(student_id, used_subnets)
         
-        return {
+        env = {
             'STUDENT_ID': student_id,
             'STUDENT_NAME': student_name,
             'SSH_PORT': str(port),
@@ -151,6 +211,12 @@ class LabManager:
             'SUBNET_ID': str(subnet_id),
             'NETWORK_NAME': f'cyber-lab-{student_id}'
         }
+        
+        # Only set STUDENT_PASSWORD when deploying via lab manager
+        if password:
+            env['STUDENT_PASSWORD'] = password
+        
+        return env
     
     def get_used_ports(self, csv_file: str) -> Set[int]:
         """Get set of ports currently in use, using CSV as the only source of truth."""
@@ -293,6 +359,12 @@ class LabManager:
                 if subnet_id is not None:
                     used_subnets.add(subnet_id)
             
+            # Ensure password assignment
+            if not student.get('password'):
+                updated_student['password'] = self.generate_password()
+                print(f"🔒 Generated password for student {student['student_id']}")
+                changes_made = True
+            
             updated_students.append(updated_student)
         
         # Write back to CSV if we made changes
@@ -320,7 +392,7 @@ class LabManager:
         """Write student data back to CSV file with updated ports and subnet IDs."""
         try:
             # Read the original file to preserve column order and any extra columns
-            fieldnames = ['student_id', 'student_name', 'port', 'subnet_id']
+            fieldnames = ['student_id', 'student_name', 'port', 'subnet_id', 'password']
             
             # Check if file exists to see what columns it originally had
             existing_columns: List[str] = []
@@ -334,7 +406,7 @@ class LabManager:
             # Preserve original column order and add new ones if needed
             if existing_columns:
                 # Keep original columns and add missing ones
-                for col in ['port', 'subnet_id']:
+                for col in ['port', 'subnet_id', 'password']:
                     if col not in existing_columns:
                         existing_columns.append(col)
                 fieldnames = existing_columns
@@ -349,7 +421,8 @@ class LabManager:
                         'student_id': student['student_id'],
                         'student_name': student['student_name'],
                         'port': student['port'],
-                        'subnet_id': student['subnet_id']  # Use existing subnet_id, don't recalculate
+                        'subnet_id': student['subnet_id'],
+                        'password': student.get('password', '')
                     }
                     
                     # Add any extra columns that might exist
@@ -396,11 +469,19 @@ class LabManager:
                     if subnet_value and subnet_value.isdigit() and int(subnet_value) > 0:
                         subnet_id = int(subnet_value)
                     
+                    # Handle password - read from CSV if present
+                    password_value = ''
+                    if 'password' in row and row['password'] is not None:
+                        password_value = str(row['password']).strip()
+                    
+                    password = password_value if password_value else None
+                    
                     students.append({
                         'student_id': student_id,
                         'student_name': student_name,
                         'port': port,
-                        'subnet_id': subnet_id
+                        'subnet_id': subnet_id,
+                        'password': password
                     })
                     
             print(f"✅ Loaded {len(students)} students from {csv_file}")
@@ -425,16 +506,16 @@ class LabManager:
                 return student
         return None
 
-    def spin_up_student(self, student_id: str, student_name: str, port: int, subnet_id: Optional[int] = None, csv_file: str = "students.csv") -> bool:
+    def spin_up_student(self, student_id: str, student_name: str, port: int, subnet_id: Optional[int] = None, password: Optional[str] = None, csv_file: str = "students.csv") -> bool:
         """Spin up containers for a specific student."""
         print(f"🚀 Spinning up containers for student: {student_name} ({student_id}) on port {port}")
         
-        env = self.get_student_env(student_id, student_name, port, subnet_id, csv_file)
+        env = self.get_student_env(student_id, student_name, port, subnet_id, password, csv_file)
         
         try:
             # Use project name to isolate each student's containers
             command = [
-                "docker", "compose", 
+                "docker", "compose", "--progress=plain",
                 "-f", self.compose_file
             ]
             
@@ -458,13 +539,13 @@ class LabManager:
             print(f"❌ Student {student_id} not found in {csv_file}")
             return False
         
-        env = self.get_student_env(student_id, student_info['student_name'], student_info['port'], student_info.get('subnet_id'), csv_file)
+        env = self.get_student_env(student_id, student_info['student_name'], student_info['port'], student_info.get('subnet_id'), student_info.get('password'), csv_file)
         print(f"🔽 Spinning down containers for student: {student_info['student_name']} ({student_id})")
         
         try:
             # Use project name to isolate each student's containers
             self.run_command([
-                "docker", "compose", 
+                "docker", "compose", "--progress=plain",
                 "-f", self.compose_file,
                 "-p", f"cyber-lab-{student_id}",  # Project name for isolation
                 "down", "--volumes", "--remove-orphans"
@@ -492,7 +573,7 @@ class LabManager:
 
             # Use project name to remove containers with environment
             self.run_command([
-                "docker", "compose", 
+                "docker", "compose", "--progress=plain",
                 "-f", self.compose_file,
                 "-p", f"cyber-lab-{student_id}",  # Project name for isolation
                 "down", "--volumes", "--remove-orphans"
@@ -532,6 +613,7 @@ class LabManager:
                         student['student_name'], 
                         student['port'],
                         student['subnet_id'],
+                        student.get('password'),
                         csv_file
                     ): student for student in students
                 }
@@ -553,6 +635,7 @@ class LabManager:
                     student['student_name'], 
                     student['port'],
                     student['subnet_id'],
+                    student.get('password'),
                     csv_file
                 ):
                     success_count += 1
@@ -681,6 +764,7 @@ class LabManager:
                     student_data['student_name'],
                     student_data['port'],
                     student_data['subnet_id'],
+                    student_data.get('password'),
                     csv_file
                 ):
                     success = False
@@ -713,6 +797,7 @@ class LabManager:
             updated_student['student_name'],
             updated_student['port'],
             updated_student['subnet_id'],
+            updated_student.get('password'),
             csv_file
         )
     
@@ -740,6 +825,7 @@ class LabManager:
             updated_student['student_name'],
             updated_student['port'],
             updated_student['subnet_id'],
+            updated_student.get('password'),
             csv_file
         )
     
@@ -888,8 +974,13 @@ def main():
                        help="Path to docker-compose file")
     parser.add_argument("--sequential", action="store_true",
                        help="Run operations sequentially instead of in parallel")
-    parser.add_argument("--no-sudo", action="store_true",
-                       help="Don't use sudo for docker commands (if running as root)")
+    
+    # Sudo control: auto-detect by default, with explicit overrides
+    sudo_group = parser.add_mutually_exclusive_group()
+    sudo_group.add_argument("--sudo", action="store_true", default=False,
+                           help="Force using sudo for docker commands")
+    sudo_group.add_argument("--no-sudo", action="store_true", default=False,
+                           help="Don't use sudo for docker commands (e.g. running as root)")
     
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
     
@@ -934,9 +1025,18 @@ def main():
         parser.print_help()
         return
     
-    # Check if we need sudo
-    use_sudo = not args.no_sudo
+    # Determine sudo mode: explicit override or auto-detect (None)
+    if args.sudo:
+        use_sudo: Optional[bool] = True
+    elif args.no_sudo:
+        use_sudo = False
+    else:
+        use_sudo = None  # auto-detect
     lab_manager = LabManager(args.compose_file, use_sudo)
+    if lab_manager.use_sudo:
+        print("🔧 Using sudo for Docker commands (override with --no-sudo)")
+    else:
+        print("🔧 Docker access detected without sudo")
     parallel = not args.sequential
     
     if args.command == "build":

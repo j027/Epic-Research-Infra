@@ -5,6 +5,8 @@ services:
     build: ./kali-jump
     container_name: kali-jump-${STUDENT_ID:-test}
     hostname: kali-jump
+    environment:
+      - STUDENT_PASSWORD=${STUDENT_PASSWORD:-}
     networks:
       cyber-lab-internal:
         ipv4_address: 10.${SUBNET_ID:-172}.42.10

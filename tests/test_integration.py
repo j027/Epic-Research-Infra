@@ -23,6 +23,8 @@ import subprocess
 import json
 from typing import List, Dict
 import sys
+import paramiko
+from paramiko.ssh_exception import AuthenticationException
 
 # Import the classes we want to test
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -459,6 +461,130 @@ class TestFullWorkflow(TestDockerIntegration):
         print("  Testing missing CSV file...")
         success = self.lab_manager.spin_up_class("/tmp/nonexistent.csv")
         assert not success, "Should fail with non-existent CSV"
+
+
+@pytest.mark.integration  
+class TestPasswordIntegration(TestDockerIntegration):
+    """Test that STUDENT_PASSWORD env var properly changes the container password"""
+    
+    def ssh_try_login(self, port: int, password: str, timeout: int = 30) -> bool:
+        """Try to SSH into localhost:<port> as 'student' with the given password.
+        Returns True if authentication succeeds, False if it fails."""
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        try:
+            ssh.connect('127.0.0.1', port=port, username='student', password=password,
+                        timeout=timeout, auth_timeout=timeout,
+                        look_for_keys=False, allow_agent=False)
+            ssh.close()
+            return True
+        except AuthenticationException:
+            return False
+        finally:
+            ssh.close()
+
+    def wait_for_ssh(self, port: int, password: str, max_wait: int = 30) -> bool:
+        """Wait until SSH is accepting connections on the given port."""
+        for i in range(max_wait):
+            try:
+                ssh = paramiko.SSHClient()
+                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                ssh.connect('127.0.0.1', port=port, username='student', password=password,
+                            timeout=5, auth_timeout=5,
+                            look_for_keys=False, allow_agent=False)
+                ssh.close()
+                return True
+            except AuthenticationException:
+                # SSH is up, auth just failed — that's fine, it's reachable
+                return True
+            except Exception:
+                time.sleep(1)
+        return False
+
+    @pytest.mark.slow
+    def test_password_set_via_env_var(self):
+        """Test that the container uses the randomized password when STUDENT_PASSWORD is set"""
+        print("\n🔐 Testing password assignment via STUDENT_PASSWORD env var...")
+        
+        test_password = "eagle-bold-jump-safe"
+        
+        # Create test CSV with a student that has a password assigned
+        test_data = [
+            {'student_id': 'functest001', 'student_name': 'Password Test Student', 'port': '', 'subnet_id': '', 'password': test_password}
+        ]
+        csv_file = self.create_test_csv(test_data)
+        
+        # Read students to trigger assignment (port/subnet), then spin up
+        students = self.lab_manager.read_students_csv(csv_file)
+        student = students[0]
+        ssh_port = student['port']
+        
+        success = self.lab_manager.spin_up_student(
+            student['student_id'],
+            student['student_name'],
+            student['port'],
+            student['subnet_id'],
+            student.get('password'),
+            csv_file
+        )
+        assert success, "Failed to spin up student containers with password"
+        
+        # Wait for SSH to be reachable
+        assert self.wait_for_ssh(ssh_port, test_password, max_wait=60), \
+            "SSH not reachable on container"
+        
+        # Verify the custom password works via SSH
+        assert self.ssh_try_login(ssh_port, test_password), \
+            "Custom password SSH login failed - chpasswd may not have run"
+        print("  ✅ Custom password works via SSH")
+        
+        # Verify the old default password no longer works
+        assert not self.ssh_try_login(ssh_port, "student123"), \
+            "Default password 'student123' still works - password was not changed!"
+        print("  ✅ Default password 'student123' correctly rejected")
+        
+        # Cleanup
+        success = self.lab_manager.spin_down_student('functest001', csv_file)
+        assert success, "Failed to spin down student"
+    
+    @pytest.mark.slow
+    def test_default_password_without_env_var(self):
+        """Test that without STUDENT_PASSWORD, the default student123 password is kept"""
+        print("\n🔐 Testing default password when STUDENT_PASSWORD is not set...")
+        
+        # Spin up a container WITHOUT password (simulating standalone docker-compose)
+        test_data = [
+            {'student_id': 'functest001', 'student_name': 'Default Password Test', 'port': '', 'subnet_id': ''}
+        ]
+        csv_file = self.create_test_csv(test_data)
+        
+        students = self.lab_manager.read_students_csv(csv_file)
+        student = students[0]
+        ssh_port = student['port']
+        
+        # Explicitly pass no password
+        success = self.lab_manager.spin_up_student(
+            student['student_id'],
+            student['student_name'],
+            student['port'],
+            student['subnet_id'],
+            None,  # No password - should keep default
+            csv_file
+        )
+        assert success, "Failed to spin up student containers"
+        
+        # Wait for SSH to be reachable
+        assert self.wait_for_ssh(ssh_port, "student123", max_wait=60), \
+            "SSH not reachable on container"
+        
+        # Verify default password works via SSH
+        assert self.ssh_try_login(ssh_port, "student123"), \
+            "Default password 'student123' should work when no STUDENT_PASSWORD set"
+        print("  ✅ Default password 'student123' works when no env var set")
+        
+        # Cleanup
+        success = self.lab_manager.spin_down_student('functest001', csv_file)
+        assert success, "Failed to spin down student"
 
 
 @pytest.mark.integration  

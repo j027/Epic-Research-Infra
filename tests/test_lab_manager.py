@@ -40,7 +40,7 @@ class TestLabManager:
         temp_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.csv')
         
         # Write CSV data
-        fieldnames = ['student_id', 'student_name', 'port', 'subnet_id']
+        fieldnames = ['student_id', 'student_name', 'port', 'subnet_id', 'password']
         writer = csv.DictWriter(temp_file, fieldnames=fieldnames)
         writer.writeheader()
         
@@ -146,7 +146,7 @@ class TestCSVOperations:
         """Helper to create a temporary CSV file with test data"""
         temp_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.csv')
         
-        fieldnames = ['student_id', 'student_name', 'port', 'subnet_id']
+        fieldnames = ['student_id', 'student_name', 'port', 'subnet_id', 'password']
         writer = csv.DictWriter(temp_file, fieldnames=fieldnames)
         writer.writeheader()
         
@@ -247,7 +247,7 @@ class TestEnsureAssignments:
         """Helper to create a temporary CSV file with test data"""
         temp_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.csv')
         
-        fieldnames = ['student_id', 'student_name', 'port', 'subnet_id']
+        fieldnames = ['student_id', 'student_name', 'port', 'subnet_id', 'password']
         writer = csv.DictWriter(temp_file, fieldnames=fieldnames)
         writer.writeheader()
         
@@ -271,13 +271,13 @@ class TestEnsureAssignments:
         """Test ensure_assignments with students that already have assignments"""
         # Create CSV with existing assignments
         csv_data = [
-            {'student_id': 'student001', 'student_name': 'Alice', 'port': '2222', 'subnet_id': '10'}
+            {'student_id': 'student001', 'student_name': 'Alice', 'port': '2222', 'subnet_id': '10', 'password': 'existingpass123'}
         ]
         csv_file = self.create_test_csv(csv_data)
         
         try:
             students: List[StudentData] = [
-                {'student_id': 'student001', 'student_name': 'Alice Smith', 'port': 2222, 'subnet_id': 10}
+                {'student_id': 'student001', 'student_name': 'Alice Smith', 'port': 2222, 'subnet_id': 10, 'password': 'existingpass123'}
             ]
             
             result = self.lab_manager.ensure_assignments(students, csv_file)
@@ -286,6 +286,7 @@ class TestEnsureAssignments:
             assert len(result) == 1
             assert result[0]['port'] == 2222
             assert result[0]['subnet_id'] == 10
+            assert result[0]['password'] == 'existingpass123'
         finally:
             os.unlink(csv_file)
     
@@ -295,8 +296,8 @@ class TestEnsureAssignments:
         
         try:
             students: List[StudentData] = [
-                {'student_id': 'student001', 'student_name': 'Alice Smith', 'port': 0, 'subnet_id': None},
-                {'student_id': 'student002', 'student_name': 'Bob Jones', 'port': 0, 'subnet_id': None}
+                {'student_id': 'student001', 'student_name': 'Alice Smith', 'port': 0, 'subnet_id': None, 'password': None},
+                {'student_id': 'student002', 'student_name': 'Bob Jones', 'port': 0, 'subnet_id': None, 'password': None}
             ]
             
             result = self.lab_manager.ensure_assignments(students, csv_file)
@@ -307,6 +308,11 @@ class TestEnsureAssignments:
             assert result[0]['subnet_id'] is not None
             assert result[1]['subnet_id'] is not None
             assert result[0]['subnet_id'] != result[1]['subnet_id']  # Different subnets
+            # Passwords should be generated (diceware format: word-word-word-word)
+            assert result[0]['password'] is not None
+            assert result[1]['password'] is not None
+            assert '-' in result[0]['password']  # Diceware format
+            assert result[0]['password'] != result[1]['password']  # Different passwords
         finally:
             os.unlink(csv_file)
     
@@ -321,7 +327,7 @@ class TestEnsureAssignments:
         try:
             # Try to assign a student with conflicting port
             students: List[StudentData] = [
-                {'student_id': 'student001', 'student_name': 'Alice Smith', 'port': 2222, 'subnet_id': None}
+                {'student_id': 'student001', 'student_name': 'Alice Smith', 'port': 2222, 'subnet_id': None, 'password': None}
             ]
             
             result = self.lab_manager.ensure_assignments(students, csv_file)
@@ -343,7 +349,7 @@ class TestEnsureAssignments:
         try:
             # Try to assign a student with conflicting subnet
             students: List[StudentData] = [
-                {'student_id': 'student001', 'student_name': 'Alice Smith', 'port': 0, 'subnet_id': 42}
+                {'student_id': 'student001', 'student_name': 'Alice Smith', 'port': 0, 'subnet_id': 42, 'password': None}
             ]
             
             result = self.lab_manager.ensure_assignments(students, csv_file)
@@ -366,7 +372,7 @@ class TestIntegrationScenarios:
         """Helper to create a temporary CSV file with test data"""
         temp_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.csv')
         
-        fieldnames = ['student_id', 'student_name', 'port', 'subnet_id']
+        fieldnames = ['student_id', 'student_name', 'port', 'subnet_id', 'password']
         writer = csv.DictWriter(temp_file, fieldnames=fieldnames)
         writer.writeheader()
         
@@ -554,11 +560,34 @@ class TestEnvironmentGeneration:
         
         assert env == expected
     
+    def test_get_student_env_with_password(self):
+        """Test environment generation includes STUDENT_PASSWORD when provided"""
+        env = self.lab_manager.get_student_env(
+            student_id="student001",
+            student_name="Alice Smith",
+            port=2222,
+            subnet_id=42,
+            password="securepass123"
+        )
+        
+        assert env['STUDENT_PASSWORD'] == 'securepass123'
+    
+    def test_get_student_env_no_password(self):
+        """Test environment generation omits STUDENT_PASSWORD when not provided"""
+        env = self.lab_manager.get_student_env(
+            student_id="student001",
+            student_name="Alice Smith",
+            port=2222,
+            subnet_id=42
+        )
+        
+        assert 'STUDENT_PASSWORD' not in env
+    
     def test_get_student_env_with_subnet_calculation(self):
         """Test environment generation with subnet calculation"""
         # Create a temporary CSV for subnet calculation
         temp_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.csv')
-        fieldnames = ['student_id', 'student_name', 'port', 'subnet_id']
+        fieldnames = ['student_id', 'student_name', 'port', 'subnet_id', 'password']
         writer = csv.DictWriter(temp_file, fieldnames=fieldnames)
         writer.writeheader()
         temp_file.close()
@@ -612,6 +641,42 @@ class TestErrorHandling:
         
         used_subnets = self.lab_manager.get_used_subnets(nonexistent_file)
         assert used_subnets == set()
+
+
+class TestPasswordGeneration:
+    """Test password generation functionality"""
+    
+    def test_generate_password_default_words(self):
+        """Test that generated passwords use 4 words by default"""
+        password = LabManager.generate_password()
+        words = password.split('-')
+        assert len(words) == 4
+    
+    def test_generate_password_custom_words(self):
+        """Test that generated passwords respect custom word count"""
+        password = LabManager.generate_password(num_words=6)
+        words = password.split('-')
+        assert len(words) == 6
+    
+    def test_generate_password_diceware_format(self):
+        """Test that generated passwords are hyphen-separated words"""
+        password = LabManager.generate_password()
+        words = password.split('-')
+        for word in words:
+            assert word.isalpha(), f"Word '{word}' should be alphabetic"
+            assert word.islower(), f"Word '{word}' should be lowercase"
+    
+    def test_generate_password_uses_word_list(self):
+        """Test that generated passwords use words from the embedded word list"""
+        password = LabManager.generate_password()
+        words = password.split('-')
+        for word in words:
+            assert word in LabManager.WORD_LIST, f"Word '{word}' not in word list"
+    
+    def test_generate_password_unique(self):
+        """Test that generated passwords are unique (with overwhelming probability)"""
+        passwords = {LabManager.generate_password() for _ in range(100)}
+        assert len(passwords) == 100
 
 
 # Test runner configuration

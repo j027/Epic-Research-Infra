@@ -36,6 +36,10 @@ RUN id student >/dev/null 2>&1 || (useradd -m -s /bin/bash student && \
     echo 'student:student123' | chpasswd && \
     usermod -aG sudo student)
 
+# Give student sudo without password so they don't need to type the randomized password
+RUN echo 'student ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/student && \
+    chmod 0440 /etc/sudoers.d/student
+
 # configure ssh
 RUN mkdir -p /var/run/sshd && \
     sed -i 's/#PasswordAuthentication .*/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
@@ -49,6 +53,10 @@ COPY 10-lab-info /etc/update-motd.d/10-lab-info
 RUN chmod +x /etc/update-motd.d/10-lab-info
 RUN mkdir -p /etc/kali-motd && touch /etc/kali-motd/disable-all
 
+# Copy entrypoint script that handles password setup
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 EXPOSE 22
 
-CMD ["/usr/sbin/sshd","-D","-e"]
+CMD ["/entrypoint.sh"]

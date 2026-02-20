@@ -1095,14 +1095,11 @@ EOF'''
             # Realistic mode: add initial startup delay (student logging in)
             self._realistic_delay("(initial startup)")
             
-            # Step 1: Initial connection and password change
+            # Step 1: Initial connection test (password is pre-assigned, no change needed)
             client = self.ssh_connect()
-            if self.change_password(client):
-                # Update current password to the new one we just set
-                self.current_password = self.new_password
             client.close()
             
-            # Realistic mode: delay between password change and recon
+            # Realistic mode: delay between login and recon
             self._realistic_delay("(before recon)")
             
             # Step 2: Lab Assignment 1 (Recon)
@@ -1255,12 +1252,12 @@ class TestLoadTesting:
         temp_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.csv')
         
         writer = csv.writer(temp_file)
-        writer.writerow(['student_id', 'student_name', 'port', 'subnet_id'])
+        writer.writerow(['student_id', 'student_name', 'port', 'subnet_id', 'password'])
         
         for i in range(num_students):
             student_id = f"loadtest{i+1:03d}"
             student_name = f"Load Test Student {i+1}"
-            writer.writerow([student_id, student_name, '', ''])
+            writer.writerow([student_id, student_name, '', '', ''])
             
         temp_file.close()
         
@@ -1357,6 +1354,10 @@ class TestLoadTesting:
                         realistic_mode=realistic_mode,
                         delay_range=(0, 10)  # 0-10 second random delays in realistic mode
                     )
+                    # Use the assigned diceware password from CSV if present
+                    assigned_pw = student_data.get('password', '').strip()
+                    if assigned_pw:
+                        simulator.current_password = assigned_pw
                     simulators.append(simulator)
                     future = executor.submit(simulator.run_full_simulation)
                     futures.append(future)
