@@ -4,6 +4,72 @@ This guide is for **instructors/administrators** deploying the lab environment f
 
 ---
 
+## Quick Start
+
+Get a class lab running in five steps. Each step links to the full details below.
+
+### 1. Install prerequisites on your Linux host
+
+```bash
+sudo apt update
+sudo apt install -y git python3 python3-pip python3-venv
+```
+
+Then install Docker Engine — see [§2.2 Install Docker Engine](#22-install-docker-engine) for the full commands.
+
+### 2. Clone the repo and build images
+
+```bash
+git clone https://github.com/j027/Epic-Research-Infra.git
+cd Epic-Research-Infra
+./lab_manager.py build
+```
+
+### 3. Create your roster CSV
+
+```bash
+cp students_example.csv students.csv
+```
+
+Edit `students.csv` and add one row per student with `student_id` and `student_name`. Leave the other columns blank — the tool fills them in automatically. See [§3 CSV Roster](#3-csv-roster) for details.
+
+### 4. Spin up the lab
+
+```bash
+./lab_manager.py class up students.csv
+```
+
+This creates an isolated network + containers for every student and assigns ports, subnets, and passwords automatically. See [§5 Core Operations](#5-core-operations) for all available commands.
+
+### 5. Distribute credentials to students
+
+After startup, `students.csv` is updated with each student's SSH port and password. Send each student their row (or the whole CSV). Students connect with:
+
+```bash
+ssh -p <assigned_port> student@<host_ip>
+```
+
+See [§6 Student Access](#6-student-access) for more on passwords and credential distribution.
+
+---
+
+### Between Labs
+
+**Recommended:** Once **all students** have finished a lab, tear down the environments and bring them back up fresh before the next lab:
+
+```bash
+./lab_manager.py class down students.csv
+./lab_manager.py class up students.csv
+```
+
+> ⚠️ **Required between the Recon and Attack labs:** You **must** recreate containers (or at a minimum reboot the host machine so they restart) before starting the Attack lab. During the Recon lab, students connect to an IRC service whose backdoor disables itself after the first connection. If the containers are not recreated, this exploit will not work in the Attack lab.
+
+---
+
+> **That's it!** The sections below cover every detail — architecture, security, troubleshooting, and the full command reference.
+
+---
+
 ## 1. Overview
 
 The Lab Manager provisions isolated per-student lab environments (jump box + targets) using Docker Compose and a simple CSV roster. Each student gets their own isolated network with two containers (Kali jump box + Ubuntu target). SSH access is exposed via a unique high port on the host.
@@ -164,7 +230,10 @@ Creates (or reuses) per‑student networks & containers. Assigns any missing por
 ./lab_manager.py class down students.csv
 ```
 > ⚠️ **Destructive:** Removes containers & ephemeral state. Any in‑container changes are lost.
-> However, this is safe to run between labs since there's no persistent data to save.
+
+Run this once **all students have finished** a lab to free host resources. Before the next lab, bring environments back up with `class up`. There is no persistent data to save, so this is always safe.
+
+> ⚠️ This is **required** between the Recon and Attack labs — see the [Between Labs](#between-labs) note in the Quick Start for details.
 
 ### 5.4 Individual Student Lifecycle
 | Action | Command |

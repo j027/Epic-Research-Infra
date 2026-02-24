@@ -110,13 +110,23 @@ This starts both containers in the background.
 
 > This environment is reused across multiple labs; you do not need to reinstall it unless instructed.
 
-### Shut Down the Lab (Full Reset)
+### Between Labs
+
+When you finish a lab, shut down the environment to free up system resources:
+
 ```bash
 docker compose down
 ```
-Removes containers completely. All changes inside are lost—this gives you a fresh start next time.
 
-> 💡 This is fine between labs since there's no persistent data to save.
+Before starting the next lab, bring it back up for a clean starting state:
+
+```bash
+docker compose up -d
+```
+
+This is recommended between all labs, and **required** before the Attack lab — if you go straight from the Recon lab without resetting, one of the exploits will not work.
+
+> 💡 There is no persistent data to save, so shutting down between labs is always safe.
 
 ---
 
