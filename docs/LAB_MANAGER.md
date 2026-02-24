@@ -49,6 +49,8 @@ After startup, `students.csv` is updated with each student's SSH port and passwo
 ssh -p <assigned_port> student@<host_ip>
 ```
 
+`<host_ip>` is the IP address or hostname of the server running the Docker containers (e.g. `10.0.0.5` or `lab.example.edu`). If you don't know it, run `ip addr` on the host and look for the `inet` address on your primary network interface (not `127.0.0.1`).
+
 See [§6 Student Access](#6-student-access) for more on passwords and credential distribution.
 
 ---
@@ -257,6 +259,8 @@ SSH pattern:
 ```bash
 ssh -p <assigned_port> student@<host_ip>
 ```
+
+Where `<host_ip>` is the IP address or hostname of the server running the Docker containers. If you don't know it, run `ip addr` on the host and look for the `inet` address on your primary network interface (not `127.0.0.1`).
 
 ### 6.1 Password Behaviour
 
