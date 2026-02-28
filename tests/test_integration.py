@@ -379,69 +379,60 @@ class TestFullWorkflow(TestDockerIntegration):
         ]
         csv_file = self.create_test_csv(test_data)
         
-        # Step 1: Test parallel spin up (with mock user confirmation)
+        # Step 1: Test parallel spin up
         print("  📤 Spinning up class (parallel mode)...")
-        # Override the confirmation method to automatically accept parallel execution
-        original_confirm = self.lab_manager._confirm_parallel_execution
-        self.lab_manager._confirm_parallel_execution = lambda operation_name: True
+        success = self.lab_manager.spin_up_class(csv_file, parallel=True)
+        assert success, "Failed to spin up class in parallel"
         
-        try:
-            success = self.lab_manager.spin_up_class(csv_file, parallel=True)
-            assert success, "Failed to spin up class in parallel"
-            
-            # Step 2: Verify all students have containers and unique assignments
-            print("  🔍 Verifying all student containers...")
-            students = self.lab_manager.read_students_csv(csv_file)
-            assert len(students) == 3, f"Expected 3 students, found {len(students)}"
-            
-            # Check that all students have unique ports and subnets (critical for parallel execution)
-            ports = [s['port'] for s in students]
-            subnets = [s['subnet_id'] for s in students]
-            assert len(set(ports)) == 3, f"Duplicate ports found in parallel execution: {ports}"
-            assert len(set(subnets)) == 3, f"Duplicate subnets found in parallel execution: {subnets}"
-            
-            # Step 3: Wait for containers to be ready (parallel execution may take longer)
-            print("  ⏳ Waiting for all containers to be ready...")
-            running_containers = 0
-            for student in students:
-                container_name = f"kali-jump-{student['student_id']}"
-                # Give more time for parallel execution
-                if self.wait_for_container_ready(container_name, max_wait=45):
-                    health = self.check_container_health(container_name)
-                    if health['running']:
-                        running_containers += 1
-                        print(f"  ✅ {student['student_id']} container running")
-                    else:
-                        print(f"  ❌ {student['student_id']} container not running: {health}")
-            
-            # In parallel mode, we should expect all containers to start
-            assert running_containers >= 2, f"Only {running_containers}/3 containers running in parallel mode"
-            
-            # Step 4: Test parallel reconciliation
-            print("  🔄 Testing reconciliation...")
-            success = self.lab_manager.reconcile_with_csv(csv_file)
-            assert success, "Reconciliation failed"
-            
-            # Step 5: Test parallel cleanup
-            print("  🗑️  Cleaning up entire class (parallel mode)...")
-            success = self.lab_manager.spin_down_class(csv_file, parallel=True)
-            assert success, "Failed to spin down class in parallel"
-            
-            # Verify cleanup (give more time for parallel cleanup)
-            time.sleep(8)  # Give Docker more time for parallel cleanup
-            running_after_cleanup = 0
-            for student in students:
-                container_name = f"kali-jump-{student['student_id']}"
+        # Step 2: Verify all students have containers and unique assignments
+        print("  🔍 Verifying all student containers...")
+        students = self.lab_manager.read_students_csv(csv_file)
+        assert len(students) == 3, f"Expected 3 students, found {len(students)}"
+        
+        # Check that all students have unique ports and subnets (critical for parallel execution)
+        ports = [s['port'] for s in students]
+        subnets = [s['subnet_id'] for s in students]
+        assert len(set(ports)) == 3, f"Duplicate ports found in parallel execution: {ports}"
+        assert len(set(subnets)) == 3, f"Duplicate subnets found in parallel execution: {subnets}"
+        
+        # Step 3: Wait for containers to be ready (parallel execution may take longer)
+        print("  ⏳ Waiting for all containers to be ready...")
+        running_containers = 0
+        for student in students:
+            container_name = f"kali-jump-{student['student_id']}"
+            # Give more time for parallel execution
+            if self.wait_for_container_ready(container_name, max_wait=45):
                 health = self.check_container_health(container_name)
                 if health['running']:
-                    running_after_cleanup += 1
-            
-            assert running_after_cleanup == 0, f"Still {running_after_cleanup} containers running after parallel cleanup"
-            
-        finally:
-            # Restore original confirmation method
-            self.lab_manager._confirm_parallel_execution = original_confirm
-    
+                    running_containers += 1
+                    print(f"  ✅ {student['student_id']} container running")
+                else:
+                    print(f"  ❌ {student['student_id']} container not running: {health}")
+        
+        # In parallel mode, we should expect all containers to start
+        assert running_containers >= 2, f"Only {running_containers}/3 containers running in parallel mode"
+        
+        # Step 4: Test parallel reconciliation
+        print("  🔄 Testing reconciliation...")
+        success = self.lab_manager.reconcile_with_csv(csv_file)
+        assert success, "Reconciliation failed"
+        
+        # Step 5: Test parallel cleanup
+        print("  🗑️  Cleaning up entire class (parallel mode)...")
+        success = self.lab_manager.spin_down_class(csv_file, parallel=True)
+        assert success, "Failed to spin down class in parallel"
+        
+        # Verify cleanup (give more time for parallel cleanup)
+        time.sleep(8)  # Give Docker more time for parallel cleanup
+        running_after_cleanup = 0
+        for student in students:
+            container_name = f"kali-jump-{student['student_id']}"
+            health = self.check_container_health(container_name)
+            if health['running']:
+                running_after_cleanup += 1
+        
+        assert running_after_cleanup == 0, f"Still {running_after_cleanup} containers running after parallel cleanup"
+
     def test_error_handling(self):
         """Test error handling scenarios"""
         print("\n🚨 Testing error handling...")

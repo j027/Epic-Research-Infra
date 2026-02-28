@@ -1353,10 +1353,6 @@ class TestLoadTesting:
         # Create test CSV
         csv_path = self.create_test_students_csv(num_students)
         
-        # Override the confirmation method to automatically accept parallel execution
-        original_confirm = self.lab_manager._confirm_parallel_execution
-        self.lab_manager._confirm_parallel_execution = lambda operation_name: True
-        
         try:
             # Step 1: Spin up all student environments
             print(f"📚 Provisioning {num_students} student environments...")
@@ -1427,9 +1423,6 @@ class TestLoadTesting:
             except Exception as cleanup_error:
                 print(f"⚠️  Warning: Cleanup failed: {cleanup_error}")
                 print("   Some containers may still be running. Use 'docker ps' to check.")
-            finally:
-                # Restore original confirmation method
-                self.lab_manager._confirm_parallel_execution = original_confirm
             
     def _read_student_assignments(self, csv_path: str) -> List[Dict]:
         """Read student assignments from CSV"""

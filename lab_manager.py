@@ -62,16 +62,6 @@ class LabManager:
         except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
             # If docker command fails entirely, assume sudo is needed
             return True
-    
-    def _confirm_parallel_execution(self, operation_name: str) -> bool:
-        """Helper function to confirm parallel execution with user."""
-        print(f"\n⚠️  PARALLEL EXECUTION MODE")
-        print(f"   Docker containers will be {operation_name} simultaneously.")
-        response = input("\n   Continue with parallel execution? (y/N): ").strip().lower()
-        if response not in ['y', 'yes']:
-            print("   Switching to sequential execution...")
-            return False
-        return True
         
     def run_command(self, command: List[str], env: Optional[Dict[str, str]] = None, capture_output: bool = True) -> subprocess.CompletedProcess[str]:
         """Run a shell command with optional environment variables."""
@@ -592,10 +582,6 @@ class LabManager:
         
         print(f"🚀 Spinning up containers for {len(students)} students...")
         
-        # Add confirmation screen for parallel operations
-        if parallel:
-            parallel = self._confirm_parallel_execution("created")
-        
         # For both parallel and sequential execution, ensure all assignments are complete
         # before starting container operations to avoid race conditions
         print("🔧 Ensuring all port and subnet assignments are complete...")
@@ -650,10 +636,6 @@ class LabManager:
             return False
         
         print(f"🛑 Spinning down containers for {len(students)} students...")
-        
-        # Add confirmation screen for parallel operations
-        if parallel:
-            parallel = self._confirm_parallel_execution("stopped")
         
         if parallel:
             # Parallel execution

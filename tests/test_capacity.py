@@ -83,10 +83,6 @@ class CapacityTester:
         # Create test CSV
         csv_path = self._create_test_csv(num_students)
         
-        # Override confirmation to auto-accept
-        original_confirm = self.lab_manager._confirm_parallel_execution
-        self.lab_manager._confirm_parallel_execution = lambda operation_name: True
-        
         start_time = time.time()
         
         try:
@@ -182,7 +178,6 @@ class CapacityTester:
             except Exception as e:
                 print(f"⚠️  Cleanup failed: {e}")
             finally:
-                self.lab_manager._confirm_parallel_execution = original_confirm
                 if os.path.exists(csv_path):
                     os.unlink(csv_path)
     
