@@ -31,7 +31,7 @@ cd Epic-Research-Infra
 cp students_example.csv students.csv
 ```
 
-Edit `students.csv` and add one row per student with `student_id` and `student_name`. Leave the other columns blank — the tool fills them in automatically. See [§3 CSV Roster](#3-csv-roster) for details.
+Edit `students.csv` and add one row per student with `student_id` and `student_name` — include **all** students for this host in a single file (even if they span multiple classes or sections). Leave the other columns blank — the tool fills them in automatically. See [§3 CSV Roster](#3-csv-roster) for details.
 
 ### 4. Spin up the lab
 
@@ -75,6 +75,8 @@ See [§6 Student Access](#6-student-access) for more on passwords and credential
 ## 1. Overview
 
 The Lab Manager provisions isolated per-student lab environments (jump box + targets) using Docker Compose and a simple CSV roster. Each student gets their own isolated network with two containers (Kali jump box + Ubuntu target). SSH access is exposed via a unique high port on the host.
+
+> **Single-host design:** The Lab Manager operates on **one host at a time**. A single CSV file is the source of truth for all students on that host — put every student (across all classes/sections) into one CSV. If you need to spread students across multiple VMs, see [§3.3 Multi-Host Deployments](#33-multi-host-deployments).
 
 ### 1.1 Architecture
 ```
@@ -183,6 +185,19 @@ student002,Bob Jones,,
 * CSV is rewritten only if changes (new assignments) occur.
 
 > After first `up` or `reconcile` run, distribute the updated CSV (or at minimum each student's port and password) to students. If you trust students not to connect to other students' containers, you may distribute the whole spreadsheet.
+
+### 3.3 Multi-Host Deployments
+
+The Lab Manager is designed for **one CSV per host**. All students on a given host — regardless of class or section — belong in a single CSV file. The tool does **not** coordinate across multiple hosts.
+
+If one host cannot handle all your students (see resource requirements in [§2](#2-requirements)), split your roster across multiple VMs:
+
+1. **Create one CSV per host** — divide students so each CSV contains only the students for that host.
+2. **Clone the repo on each host** and run `class up` with that host's CSV.
+3. **Ports and subnets are scoped per host** — each host assigns independently, so there is no conflict between hosts.
+4. **Do not use the same CSV on multiple hosts** — the tool has no awareness of other hosts and will assign overlapping ports/subnets.
+
+> **Example:** 60 students across 2 VMs → `students-vm1.csv` (30 students) on Host A, `students-vm2.csv` (30 students) on Host B. Each host runs its own independent Lab Manager instance.
 
 ---
 
