@@ -166,7 +166,7 @@ class LabManager:
             return cls.WORD_LIST
         try:
             with open(cls._WORDLIST_PATH, 'r') as f:
-                cls.WORD_LIST = [line.strip().split('\t')[1] for line in f if '\t' in line]
+                cls.WORD_LIST = [line.strip().split('\t')[1] for line in f if '\t' in line and '-' not in line.strip().split('\t')[1]]
         except FileNotFoundError:
             raise FileNotFoundError(
                 f"EFF wordlist not found at {cls._WORDLIST_PATH}. "
