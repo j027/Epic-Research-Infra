@@ -41,7 +41,7 @@ class CapacityTestConfig:
     def __init__(self):
         # Binary search bounds
         self.min_students = 1  # Known working minimum
-        self.max_students = 100  # Theoretical maximum to test
+        self.max_students = 254  # Max per subnet (1-254, avoiding 0 and 255)
         
         # Success criteria - WORST CASE SCENARIO
         # All students must complete successfully - no failures tolerated
@@ -132,6 +132,10 @@ class CapacityTester:
                         "localhost",
                         int(student_data['port'])
                     )
+                    # Use the assigned diceware password from CSV if present
+                    assigned_pw = student_data.get('password', '').strip()
+                    if assigned_pw:
+                        simulator.current_password = assigned_pw
                     future = executor.submit(simulator.run_full_simulation)
                     futures.append(future)
                 
