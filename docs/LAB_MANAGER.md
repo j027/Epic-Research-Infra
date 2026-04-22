@@ -1,4 +1,4 @@
-# Lab Manager - Multi-Host Deployment
+# Lab Manager
 
 This guide is for **instructors/administrators** deploying the lab environment for multiple students on a shared server. If you're a student setting up the lab on your own machine, see the main [README](../README.md).
 
@@ -31,7 +31,7 @@ cd Epic-Research-Infra
 cp students_example.csv students.csv
 ```
 
-Edit `students.csv` and add one row per student with `student_id` and `student_name` — include **all** students for this host in a single file (even if they span multiple classes or sections). Leave the other columns blank — the tool fills them in automatically. See [§3 CSV Roster](#3-csv-roster) for details.
+Edit `students.csv` and add one row per student with `student_id` and `student_name` — include all students who will be running simultaneously on this host. Leave the other columns blank — the tool fills them in automatically. See [§3 CSV Roster](#3-csv-roster) for details.
 
 ### 4. Spin up the lab
 
@@ -76,7 +76,7 @@ See [§6 Student Access](#6-student-access) for more on passwords and credential
 
 The Lab Manager provisions isolated per-student lab environments (jump box + targets) using Docker Compose and a simple CSV roster. Each student gets their own isolated network with two containers (Kali jump box + Ubuntu target). SSH access is exposed via a unique high port on the host.
 
-> **Single-host design:** The Lab Manager operates on **one host at a time**. A single CSV file is the source of truth for all students on that host — put every student (across all classes/sections) into one CSV. If you need to spread students across multiple VMs, see [§3.3 Multi-Host Deployments](#33-multi-host-deployments).
+> **Single-host design:** The Lab Manager operates on **one host at a time**. One CSV is the source of truth for all students running simultaneously on that host. If multiple classes run at the same time, put all students in one CSV. If classes run at different times, you can use a separate CSV per class — see [§3.4 Multiple Classes on One Host](#34-multiple-classes-on-one-host). To spread students across multiple VMs, see [§3.3 Multi-Host Deployments](#33-multi-host-deployments).
 
 ### 1.1 Architecture
 ```
@@ -164,9 +164,9 @@ sudo apt install -y python3 python3-pip python3-venv
 The CSV drives everything. Example (`students_example.csv`):
 
 ```csv
-student_id,student_name,port,subnet_id
-student001,Alice Smith,,
-student002,Bob Jones,,
+student_id,student_name,port,subnet_id,password
+student001,Alice Smith,,,
+student002,Bob Jones,,,
 ```
 
 ### 3.1 Columns
@@ -188,7 +188,7 @@ student002,Bob Jones,,
 
 ### 3.3 Multi-Host Deployments
 
-The Lab Manager is designed for **one CSV per host**. All students on a given host — regardless of class or section — belong in a single CSV file. The tool does **not** coordinate across multiple hosts.
+The Lab Manager operates on **one host at a time** and does **not** coordinate across multiple hosts. When running classes concurrently on a single host, all concurrent students belong in a single CSV. (For non-concurrent classes on the same host, see [§3.4](#34-multiple-classes-on-one-host).)
 
 If one host cannot handle all your students (see resource requirements in [§2](#2-requirements)), split your roster across multiple VMs:
 
@@ -198,6 +198,26 @@ If one host cannot handle all your students (see resource requirements in [§2](
 4. **Do not use the same CSV on multiple hosts** — the tool has no awareness of other hosts and will assign overlapping ports/subnets.
 
 > **Example:** 60 students across 2 VMs → `students-vm1.csv` (30 students) on Host A, `students-vm2.csv` (30 students) on Host B. Each host runs its own independent Lab Manager instance.
+
+### 3.4 Multiple Classes on One Host
+
+If you teach multiple classes or sections on the same host, you have two options:
+
+**Option A — Classes run at the same time (concurrent):** Put all students from all classes into a single CSV. The Lab Manager assigns unique ports and subnets for everyone and all environments run simultaneously.
+
+**Option B — Classes run at different times (non-concurrent):** Keep a separate CSV per class. This works because `class down` completely removes all containers — once a class is torn down its environments no longer exist on the host, so there is no port or subnet conflict when you bring up a different class's CSV afterward.
+
+```bash
+# Monday's class
+./lab_manager.py class up monday-class.csv
+# ... students complete the lab ...
+./lab_manager.py class down monday-class.csv
+
+# Tuesday's class — no conflict because Monday's containers are gone
+./lab_manager.py class up tuesday-class.csv
+```
+
+> **Caution:** If you accidentally run `class up` for two separate CSVs at the same time on the same host, port and subnet conflicts are possible. If you need truly concurrent classes, use Option A (single CSV) so the Lab Manager can coordinate assignments across all students at once.
 
 ---
 
