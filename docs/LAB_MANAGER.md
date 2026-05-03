@@ -121,7 +121,7 @@ Install on a Linux host with Docker:
 * Docker Engine
 * Docker Compose (plugin or standalone)
 * Python 3 (>=3.10 recommended)
-* Sufficient system resources (CPU, RAM, disk) for number of concurrent students
+* Sufficient system resources — see [§2.4 Host Resource Requirements](#24-host-resource-requirements)
 
 ### 2.1 Install Git
 ```bash
@@ -156,6 +156,29 @@ sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin 
 sudo apt update
 sudo apt install -y python3 python3-pip python3-venv
 ```
+
+### 2.4 Host Resource Requirements
+
+**CPU & RAM**
+
+For **40 simultaneously active students**, a minimum of **16 CPU cores** and **32 GB RAM** is recommended. Each student's environment (Kali jump box + two Ubuntu targets) is capped at 2 vCPUs and 1 GB RAM per container, so resource contention grows with the number of students active at the same time — not the total roster size.
+
+**Disk**
+
+Disk usage has two components:
+
+* **Shared images** (~5.5 GB, paid once per host regardless of student count)
+* **Per-student writable layer** — fresh containers use under 10 MB each; after a typical lab session ~25 MB; worst case if a student runs `apt upgrade` on all containers ~114 MB (assuming recently rebuilt images), or up to ~2 GB per student if images are many months old
+
+For capacity planning, use the worst-case figures:
+
+> 40 students (fresh build): ~5.5 GB (images) + 40 × 114 MB ≈ **10.1 GB total**
+>
+> 40 students (stale images): ~5.5 GB (images) + 40 × 2 GB ≈ **85 GB total**
+
+> **Note:** Students are not expected to upgrade packages during the lab — ~114 MB is a worst-case ceiling. Rebuilding images before each semester (see [§4.3 Build Images](#43-build-images)) resets this baseline because the Dockerfiles already run `apt-get upgrade` at build time, leaving little drift for students to accumulate.
+
+To re-measure disk usage against your current images, see [§9.3 Disk Usage Measurement](#93-disk-usage-measurement).
 
 ---
 
@@ -366,7 +389,17 @@ pytest -v
 pytest tests/test_capacity.py -v -s -m capacity
 ```
 
-### 9.3 Parallel vs Sequential Operations
+### 9.3 Disk Usage Measurement
+
+Spin up one test student environment, run the full lab simulation, then run a worst-case `apt upgrade` across all containers. Prints a planning report showing shared image sizes and per-student writable layer overhead at each stage.
+
+```bash
+python -m pytest tests/test_disk_usage.py -v -s -m disk_usage
+```
+
+> Requires Docker and pre-built lab images (`./lab_manager.py build`).
+
+### 9.4 Parallel vs Sequential Operations
 ```bash
 ./lab_manager.py --sequential class up students.csv
 ```
@@ -386,6 +419,8 @@ To reclaim disk space after decommissioning the lab:
 ```bash
 sudo docker rmi epic-research-infra-kali-jump:latest epic-research-infra-ubuntu-target1:latest epic-research-infra-ubuntu-target2:latest
 ```
+
+> This reclaims approximately **5.5 GB** of image storage.
 
 ### Clear Build Cache
 ```bash
