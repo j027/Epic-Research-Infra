@@ -12,7 +12,7 @@ RUN mkdir -p /home/msfadmin/.secret/.topsecret/ && chown -R msfadmin:msfadmin /h
 COPY --chown=msfadmin:msfadmin Army_Week_Plans.txt /home/msfadmin/.secret/.topsecret/Army_Week_Plans.txt
 
 # Install zip utility for flag creation and telnet server
-RUN apt-get update && apt-get install -y zip sshpass xinetd telnetd net-tools && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y zip sshpass xinetd telnetd net-tools avahi-daemon avahi-utils dbus && rm -rf /var/lib/apt/lists/*
 
 ##ProFTPD
 EXPOSE 21
@@ -43,5 +43,7 @@ COPY start.sh /start.sh
 RUN chmod +x /start.sh
 COPY telnet /etc/xinetd.d/telnet
 COPY issue.net /etc/issue.net
+COPY epic-lab.service /etc/avahi/services/epic-lab.service
+RUN mkdir -p /var/run/dbus
 
 ENTRYPOINT ["/usr/bin/supervisord"]

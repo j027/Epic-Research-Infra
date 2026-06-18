@@ -204,15 +204,16 @@ EOF'''
         
         Based on the updated lab instructions:
         1. Ping target to verify it's online (Q4)
-        2. Full TCP port scan with nmap -p- (Q6)
-        3. OS detection with nmap -O (Q7)
-        4. Service/version detection on IRC port 6667 (Q8)
-        5. Connect with irssi to get UnrealIRCd version (Q8)
-        6. Search for UnrealIRCd exploit in Metasploit (Q9)
-        7. Network scan to discover ubuntu-target2 (Q11)
-        8. Full port scan on ubuntu-target2 (Q11)
-        9. Service/version detection on distcc port 3632 (Q12)
-        10. Search for distcc exploit in Metasploit (Q15)
+        2. Passive recon - capture mDNS traffic with tcpdump (Q6)
+        3. Full TCP port scan with nmap -p- (Q7)
+        4. OS detection with nmap -O (Q8)
+        5. Service/version detection on IRC port 6667 (Q9)
+        6. Connect with irssi to get UnrealIRCd version (Q9)
+        7. Search for UnrealIRCd exploit in Metasploit (Q10)
+        8. Network scan to discover ubuntu-target2 (Q12)
+        9. Full port scan on ubuntu-target2 (Q12)
+        10. Service/version detection on distcc port 3632 (Q13)
+        11. Search for distcc exploit in Metasploit (Q16)
         """
         try:
             # Connect with current password
@@ -233,7 +234,26 @@ EOF'''
                 client.close()
                 return False
             
-            # Step 2: Full TCP port scan (Q6) - nmap -p-
+            # Step 2: Passive recon - capture mDNS traffic with tcpdump (Q6)
+            start_time = time.time()
+            print(f"[{self.student_id}] Capturing mDNS traffic passively...")
+            stdout, stderr, exit_code = self.run_ssh_command(
+                client,
+                "sudo timeout 35 tcpdump -i eth0 port 5353 -A 2>&1",
+                timeout=40
+            )
+            duration = time.time() - start_time
+
+            if "listen-dont-probe" in stdout:
+                self.log_result("Passive Recon (mDNS)", True, duration)
+                print(f"[{self.student_id}] ✅ Flag found via passive recon")
+            else:
+                self.log_result("Passive Recon (mDNS)", False, duration,
+                              f"Flag not found in capture. Output: {stdout[:200]}")
+                client.close()
+                return False
+            
+            # Step 3: Full TCP port scan (Q7) - nmap -p-
             print(f"[{self.student_id}] Running full TCP port scan (nmap -p-)...")
             success, stdout, duration = self.run_nmap_scan_with_retry(
                 client,
@@ -251,7 +271,7 @@ EOF'''
                 client.close()
                 return False
             
-            # Step 3: OS detection (Q7) - nmap -O
+            # Step 4: OS detection (Q8) - nmap -O
             start_time = time.time()
             print(f"[{self.student_id}] Running OS detection (nmap -O)...")
             stdout, stderr, exit_code = self.run_ssh_command(
@@ -267,7 +287,7 @@ EOF'''
                 self.log_result("OS Detection", True, duration)
                 print(f"[{self.student_id}] ⚠️ OS detection completed (may need root for accurate results)")
             
-            # Step 4: Service/version detection on IRC port (Q8)
+            # Step 5: Service/version detection on IRC port (Q9)
             start_time = time.time()
             print(f"[{self.student_id}] Running service scan on port 6667...")
             stdout, stderr, exit_code = self.run_ssh_command(
@@ -283,7 +303,7 @@ EOF'''
                 client.close()
                 return False
             
-            # Step 5: Connect to IRC to get version (Q8)
+            # Step 6: Connect to IRC to get version (Q9)
             # Note: irssi requires scrolling to see version which is hard to automate
             # Use netcat to grab the IRC banner directly instead
             #start_time = time.time()
@@ -291,7 +311,7 @@ EOF'''
             # Use netcat with a NICK/USER handshake to get server response with version
             # Removed version check because it breaks the exploit later on
             
-            # Step 6: Search for UnrealIRCd exploit in Metasploit (Q9)
+            # Step 7: Search for UnrealIRCd exploit in Metasploit (Q10)
             start_time = time.time()
             print(f"[{self.student_id}] Searching for UnrealIRCd exploit in Metasploit...")
             msf_cmd = """msfconsole -q -x 'search UnrealIRCd; exit'"""
@@ -308,7 +328,7 @@ EOF'''
                 client.close()
                 return False
             
-            # Step 7: Network scan to discover build-server (Q11)
+            # Step 8: Network scan to discover build-server (Q12)
             # First, identify our subnet (dynamic based on SUBNET_ID)
             start_time = time.time()
             print(f"[{self.student_id}] Discovering network subnet...")
@@ -355,7 +375,7 @@ EOF'''
                     client.close()
                     return False
             
-            # Step 8: Full port scan on build-server (Q11)
+            # Step 9: Full port scan on build-server (Q12)
             print(f"[{self.student_id}] Running full port scan on build-server...")
             success, stdout, duration = self.run_nmap_scan_with_retry(
                 client,
@@ -372,7 +392,7 @@ EOF'''
                 client.close()
                 return False
             
-            # Step 9: Service/version detection on distcc port (Q12)
+            # Step 10: Service/version detection on distcc port (Q13)
             start_time = time.time()
             print(f"[{self.student_id}] Running service scan on port 3632...")
             stdout, stderr, exit_code = self.run_ssh_command(
@@ -388,7 +408,7 @@ EOF'''
                 client.close()
                 return False
             
-            # Step 10: Search for distcc exploit in Metasploit (Q15)
+            # Step 11: Search for distcc exploit in Metasploit (Q16)
             start_time = time.time()
             print(f"[{self.student_id}] Searching for distcc exploit in Metasploit...")
             msf_cmd = """msfconsole -q -x 'search distcc; exit'"""

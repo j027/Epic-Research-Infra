@@ -16,7 +16,8 @@ RUN apt-get update && apt-get install -y \
     expect \
     telnet \
     net-tools \
-    man-db \ 
+    man-db \
+    tcpdump \ 
     sshpass \
     netcat-openbsd \
     distcc \

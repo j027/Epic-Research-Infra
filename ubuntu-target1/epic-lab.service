@@ -1,0 +1,10 @@
+<?xml version="1.0" standalone='no'?><!--*-nxml-*-->
+<!DOCTYPE service-group SYSTEM "avahi-service.dtd">
+<service-group>
+  <name>File Server</name>
+  <service>
+    <type>_epic-lab._tcp</type>
+    <port>21</port>
+    <txt-record>flag=listen-dont-probe</txt-record>
+  </service>
+</service-group>
