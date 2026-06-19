@@ -115,6 +115,8 @@ class StudentSimulator:
         Returns (success, stdout, total_duration)
         """
         total_start = time.time()
+        missing = []
+        stdout = ""
         for attempt in range(1, max_retries + 1):
             start_time = time.time()
             print(f"[{self.student_id}] {step_name} attempt {attempt}/{max_retries}...")
@@ -287,19 +289,20 @@ EOF'''
                 self.log_result("OS Detection", True, duration)
                 print(f"[{self.student_id}] ⚠️ OS detection completed (may need root for accurate results)")
             
-            # Step 5: Service/version detection on IRC port (Q9)
+            # Step 5: Verify IRC port is open (Q9)
+            # Note: plain port scan only (no -sV) to avoid triggering the backdoor
             start_time = time.time()
-            print(f"[{self.student_id}] Running service scan on port 6667...")
+            print(f"[{self.student_id}] Checking port 6667 on file-server...")
             stdout, stderr, exit_code = self.run_ssh_command(
-                client, "nmap -p 6667 -sV file-server", timeout=60
+                client, "nmap -p 6667 file-server", timeout=60
             )
             duration = time.time() - start_time
             
-            if exit_code == 0 and "unrealircd" in stdout.lower():
-                self.log_result("IRC Service Scan", True, duration)
-                print(f"[{self.student_id}] ✅ Found UnrealIRCd service")
+            if exit_code == 0 and "open" in stdout.lower():
+                self.log_result("IRC Port Check", True, duration)
+                print(f"[{self.student_id}] ✅ Port 6667 is open")
             else:
-                self.log_result("IRC Service Scan", False, duration, f"UnrealIRCd not found: {stdout}")
+                self.log_result("IRC Port Check", False, duration, f"Port 6667 not open: {stdout}")
                 client.close()
                 return False
             
